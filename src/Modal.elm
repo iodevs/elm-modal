@@ -1,46 +1,50 @@
-module Modal exposing (..)
+module Modal exposing
+    ( ClosingAnimation(..)
+    , ClosingEffect(..)
+    , Config
+    , Model
+    , Msg
+    , OpenedAnimation(..)
+    , OpeningAnimation(..)
+    , animationEnd
+    , closeModal
+    , initModel
+    , newConfig
+    , openModal
+    , setBody
+    , setBodyCss
+    , setClosingAnimation
+    , setClosingEffect
+    , setFooter
+    , setFooterCss
+    , setHeader
+    , setHeaderCss
+    , setOpenedAnimation
+    , setOpeningAnimation
+    , update
+    , view
+    )
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, on)
+import Html.Events exposing (on, onClick)
 import Json.Decode as Json
+
 
 
 -- Model
 
 
-type alias Model =
-    Modal
+type Model msg
+    = Opening (Config msg)
+    | Opened (Config msg)
+    | Closing (Config msg)
+    | Closed
 
 
+initModel : Model msg
 initModel =
     Closed
-
-
-
--- type alias Model config =
---     { modal : Modal config }
--- initModel =
---     { modal = Closed }
---Types
-
-
-{-| Opaque type that holds the configuration
--}
-type Config msg
-    = Config (PrivateConfig msg)
-
-
-{-| Opaque type that holds the current model
--}
-type Mdl
-    = PrivateModel Model
-
-
-{-| Opaque type for internal library messages
--}
-type Mesg config
-    = PrivateMsg (Msg config)
 
 
 type OpeningAnimation
@@ -81,18 +85,20 @@ type alias Footer msg =
     Html msg
 
 
-type alias PrivateConfig msg =
-    { openingAnimation : OpeningAnimation
-    , openedAnimation : OpenedAnimation
-    , closingAnimation : ClosingAnimation
-    , closingEffect : ClosingEffect
-    , headerCss : String
-    , header : Header msg
-    , bodyCss : String
-    , body : Body msg
-    , footerCss : String
-    , footer : Footer msg
-    }
+type Config msg
+    = Config
+        { openingAnimation : OpeningAnimation
+        , openedAnimation : OpenedAnimation
+        , closingAnimation : ClosingAnimation
+        , closingEffect : ClosingEffect
+        , headerCss : String
+        , header : Header msg
+        , bodyCss : String
+        , body : Body msg
+        , footerCss : String
+        , footer : Footer msg
+        , tagger : Msg msg -> msg
+        }
 
 
 {-| Create a new configuration for Modal.
@@ -100,8 +106,8 @@ type alias PrivateConfig msg =
     newConfig |> setHeaderCss "header--bg-color"
 
 -}
-newConfig : Config msg
-newConfig =
+newConfig : (Msg msg -> msg) -> Config msg
+newConfig tagger =
     Config
         { openingAnimation = FromTop
         , openedAnimation = OpenFromTop
@@ -113,20 +119,29 @@ newConfig =
         , body = text ""
         , footerCss = ""
         , footer = text ""
+        , tagger = tagger
         }
 
 
-type Modal config
-    = Opening config
-    | Opened config
-    | Closing config
-    | Closed
-
-
-type Msg config
-    = OpenModal config
+type Msg msg
+    = OpenModal (Config msg)
     | CloseModal
     | AnimationEnd
+
+
+openModal : (Msg msg -> msg) -> Config msg -> msg
+openModal fn config =
+    fn (OpenModal config)
+
+
+closeModal : (Msg msg -> msg) -> msg
+closeModal fn =
+    fn CloseModal
+
+
+animationEnd : (Msg msg -> msg) -> msg
+animationEnd fn =
+    fn AnimationEnd
 
 
 
@@ -141,10 +156,10 @@ type Msg config
 setBodyCss : String -> Config msg -> Config msg
 setBodyCss newBodyCss config =
     let
-        fn c =
-            { c | bodyCss = newBodyCss }
+        fn (Config c) =
+            Config { c | bodyCss = newBodyCss }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 {-| Set styles and msg to the body of modal
@@ -159,82 +174,82 @@ setBodyCss newBodyCss config =
 setBody : Body msg -> Config msg -> Config msg
 setBody newBody config =
     let
-        fn c =
-            { c | body = newBody }
+        fn (Config c) =
+            Config { c | body = newBody }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setHeaderCss : String -> Config msg -> Config msg
 setHeaderCss newHeaderCss config =
     let
-        fn c =
-            { c | headerCss = newHeaderCss }
+        fn (Config c) =
+            Config { c | headerCss = newHeaderCss }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setHeader : Header msg -> Config msg -> Config msg
 setHeader newHeader config =
     let
-        fn c =
-            { c | header = newHeader }
+        fn (Config c) =
+            Config { c | header = newHeader }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setFooterCss : String -> Config msg -> Config msg
 setFooterCss newFooterCss config =
     let
-        fn c =
-            { c | footerCss = newFooterCss }
+        fn (Config c) =
+            Config { c | footerCss = newFooterCss }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setFooter : Footer msg -> Config msg -> Config msg
 setFooter newFooter config =
     let
-        fn c =
-            { c | footer = newFooter }
+        fn (Config c) =
+            Config { c | footer = newFooter }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setOpeningAnimation : OpeningAnimation -> Config msg -> Config msg
 setOpeningAnimation opening config =
     let
-        fn c =
-            { c | openingAnimation = opening }
+        fn (Config c) =
+            Config { c | openingAnimation = opening }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setOpenedAnimation : OpenedAnimation -> Config msg -> Config msg
 setOpenedAnimation opened config =
     let
-        fn c =
-            { c | openedAnimation = opened }
+        fn (Config c) =
+            Config { c | openedAnimation = opened }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setClosingAnimation : ClosingAnimation -> Config msg -> Config msg
 setClosingAnimation closing config =
     let
-        fn c =
-            { c | closingAnimation = closing }
+        fn (Config c) =
+            Config { c | closingAnimation = closing }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setClosingEffect : ClosingEffect -> Config msg -> Config msg
 setClosingEffect newClosingEffect config =
     let
-        fn c =
-            { c | closingEffect = newClosingEffect }
+        fn (Config c) =
+            Config { c | closingEffect = newClosingEffect }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 
@@ -242,7 +257,7 @@ setClosingEffect newClosingEffect config =
 
 
 {-| -}
-setModalState : Modal config -> Modal config
+setModalState : Model msg -> Model msg
 setModalState modal =
     case modal of
         Opening config ->
@@ -270,35 +285,23 @@ setModalState modal =
             )
 
 -}
-update : Mesg config -> Config msg -> Mdl -> ( Model, Cmd msg )
-update msg_ config_ model_ =
-    let
-        config =
-            unwrapConfig config_
+update : Msg msg -> Model msg -> ( Model msg, Cmd msg )
+update msg model =
+    case msg of
+        OpenModal config ->
+            ( Opening config
+            , Cmd.none
+            )
 
-        msg =
-            unwrapMsg msg_
+        CloseModal ->
+            ( setModalState model
+            , Cmd.none
+            )
 
-        model =
-            unwrapModel model_
-    in
-        case msg of
-            OpenModal config ->
-                ( { model
-                    | modal = Opening config
-                  }
-                , Cmd.none
-                )
-
-            CloseModal ->
-                ( { model | modal = setModalState model.modal }
-                , Cmd.none
-                )
-
-            AnimationEnd ->
-                ( { model | modal = setModalState model.modal }
-                , Cmd.none
-                )
+        AnimationEnd ->
+            ( setModalState model
+            , Cmd.none
+            )
 
 
 
@@ -310,61 +313,57 @@ update msg_ config_ model_ =
     Html.map ModalMsg (Modal.view yourConfig model.modal)
 
 -}
-view : Config msg -> Modal config -> Html (Msg config)
-view config_ modal =
-    let
-        config =
-            unwrapConfig config_
-    in
-        case modal of
-            Opening config ->
-                div [ class "modal" ]
-                    [ div
-                        [ class ("modal__body " ++ (openingAnimationClass config.openingAnimation))
-                        , onAnimationEnd AnimationEnd
-                        ]
-                        [ div
-                            [ class ("modal__header " ++ (config.headerCss)) ]
-                            [ config.header ]
-                        , div [ class ("modal__content " ++ (config.bodyCss)) ]
-                            [ config.body ]
-                        , div [ class ("modal__footer " ++ (config.footerCss)) ]
-                            [ config.footer ]
-                        ]
+view : Model msg -> Html msg
+view modal =
+    case modal of
+        Opening (Config config) ->
+            div [ class "modal" ]
+                [ div
+                    [ class ("modal__body " ++ openingAnimationClass config.openingAnimation)
+                    , onAnimationEnd (config.tagger AnimationEnd)
                     ]
-
-            Opened config ->
-                div [ class "modal" ]
                     [ div
-                        [ class ("modal__body " ++ (openedAnimationClass config.openedAnimation)) ]
-                        [ div
-                            [ class ("modal__header " ++ (config.headerCss)) ]
-                            [ config.header ]
-                        , div [ class ("modal__content " ++ (config.bodyCss)) ]
-                            [ config.body ]
-                        , div [ class ("modal__footer " ++ (config.footerCss)) ]
-                            [ config.footer ]
-                        ]
+                        [ class ("modal__header " ++ config.headerCss) ]
+                        [ config.header ]
+                    , div [ class ("modal__content " ++ config.bodyCss) ]
+                        [ config.body ]
+                    , div [ class ("modal__footer " ++ config.footerCss) ]
+                        [ config.footer ]
                     ]
+                ]
 
-            Closing config ->
-                div [ class ("modal modal--close " ++ closingEffectClass config.closingEffect) ]
+        Opened (Config config) ->
+            div [ class "modal" ]
+                [ div
+                    [ class ("modal__body " ++ openedAnimationClass config.openedAnimation) ]
                     [ div
-                        [ class ("modal__body " ++ closingAnimationClass config.closingAnimation)
-                        , onAnimationEnd AnimationEnd
-                        ]
-                        [ div
-                            [ class ("modal__header " ++ (config.headerCss)) ]
-                            [ config.header ]
-                        , div [ class ("modal__content " ++ (config.bodyCss)) ]
-                            [ config.body ]
-                        , div [ class ("modal__footer " ++ (config.footerCss)) ]
-                            [ config.footer ]
-                        ]
+                        [ class ("modal__header " ++ config.headerCss) ]
+                        [ config.header ]
+                    , div [ class ("modal__content " ++ config.bodyCss) ]
+                        [ config.body ]
+                    , div [ class ("modal__footer " ++ config.footerCss) ]
+                        [ config.footer ]
                     ]
+                ]
 
-            Closed ->
-                text ""
+        Closing (Config config) ->
+            div [ class ("modal modal--close " ++ closingEffectClass config.closingEffect) ]
+                [ div
+                    [ class ("modal__body " ++ closingAnimationClass config.closingAnimation)
+                    , onAnimationEnd (config.tagger AnimationEnd)
+                    ]
+                    [ div
+                        [ class ("modal__header " ++ config.headerCss) ]
+                        [ config.header ]
+                    , div [ class ("modal__content " ++ config.bodyCss) ]
+                        [ config.body ]
+                    , div [ class ("modal__footer " ++ config.footerCss) ]
+                        [ config.footer ]
+                    ]
+                ]
+
+        Closed ->
+            text ""
 
 
 
@@ -409,7 +408,7 @@ closingAnimationClass animation =
         ToBottom ->
             "modal--bottom-closing"
 
-        toLeft ->
+        ToLeft ->
             "modal--left-closing"
 
 
@@ -454,30 +453,6 @@ onAnimationEnd msg =
 
 {-| @priv
 -}
-mapConfig : (PrivateConfig msg -> PrivateConfig msg) -> Config msg -> Config msg
+mapConfig : (Config msg -> Config msg) -> Config msg -> Config msg
 mapConfig fn config =
-    config
-        |> unwrapConfig
-        |> fn
-        |> Config
-
-
-{-| @priv
--}
-unwrapConfig : Config msg -> PrivateConfig msg
-unwrapConfig (Config config) =
-    config
-
-
-{-| @priv
--}
-unwrapMsg : Mesg config -> Msg config
-unwrapMsg (PrivateMsg msg) =
-    msg
-
-
-{-| @priv
--}
-unwrapModel : Mdl -> Model
-unwrapModel (PrivateModel model) =
-    model
+    fn config

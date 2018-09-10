@@ -1,13 +1,14 @@
-module Main exposing (..)
+module Main exposing (main)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Modal
     exposing
-        ( OpeningAnimation(..)
-        , OpenedAnimation(..)
-        , ClosingAnimation(..)
+        ( ClosingAnimation(..)
         , ClosingEffect(..)
+        , OpenedAnimation(..)
+        , OpeningAnimation(..)
         )
 
 
@@ -26,15 +27,15 @@ main =
 
 
 type alias Model =
-    { modal : Modal.Mdl
-    , status : Status
+    { modal : Modal.Model Msg
+    , status : Maybe Status
     }
 
 
 initModel : Model
 initModel =
     { modal = Modal.initModel
-    , status = None
+    , status = Nothing
     }
 
 
@@ -56,7 +57,7 @@ type Status
 type Msg
     = NoOp
     | Confirm
-    | ModalMsg Modal.Mesg
+    | ModalMsg (Modal.Msg Msg)
 
 
 
@@ -69,11 +70,11 @@ update msg model =
         ModalMsg modalMsg ->
             let
                 ( updatedModal, cmdModal ) =
-                    Modal.update modalMsg (whichConfig model.status) model.modal
+                    Modal.update modalMsg model.modal
             in
-                ( { model | modal = updatedModal }
-                , Cmd.map ModalMsg cmdModal
-                )
+            ( { model | modal = updatedModal }
+            , cmdModal
+            )
 
         Confirm ->
             ( model, Cmd.none )
@@ -88,13 +89,13 @@ update msg model =
 
 configSuccess : Modal.Config Msg
 configSuccess =
-    Modal.newConfig
-        |> setHeaderCss "label success"
-        |> setHeader (h2 [] [ text "Success" ])
-        |> setBodyCss "body__success--bg-color"
-        |> setBody (bodySuccess Confirm)
-        |> setFooterCss "footer__success--bg-color"
-        |> setFooter (footerSuccess ModalMsg.CloseModal ModalMsg.CloseModal)
+    Modal.newConfig ModalMsg
+        |> Modal.setHeaderCss "label success"
+        |> Modal.setHeader (h2 [] [ text "Success" ])
+        |> Modal.setBodyCss "body__success--bg-color"
+        |> Modal.setBody (bodySuccess Confirm)
+        |> Modal.setFooterCss "footer__success--bg-color"
+        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
 bodySuccess : msg -> Html msg
@@ -127,15 +128,15 @@ footerSuccess confirmMsg closeMsg =
 
 configWarning : Modal.Config Msg
 configWarning =
-    Modal.newConfig
-        |> setClosingEffect WithoutAnimate
-        |> setOpeningAnimation FromTop
-        |> setOpenedAnimation OpenFromTop
-        |> setClosingAnimation ToTop
-        |> setHeaderCss "label warning"
-        |> setHeader (h2 [] [ text "Warning" ])
-        |> setBody bodyWarning
-        |> setFooter (footerWarning ModalMsg.CloseModal)
+    Modal.newConfig ModalMsg
+        |> Modal.setClosingEffect WithoutAnimate
+        |> Modal.setOpeningAnimation FromTop
+        |> Modal.setOpenedAnimation OpenFromTop
+        |> Modal.setClosingAnimation ToTop
+        |> Modal.setHeaderCss "label warning"
+        |> Modal.setHeader (h2 [] [ text "Warning" ])
+        |> Modal.setBody bodyWarning
+        |> Modal.setFooter (footerWarning (Modal.closeModal ModalMsg))
 
 
 bodyWarning : Html msg
@@ -155,14 +156,14 @@ footerWarning msg =
 
 configAlert : Modal.Config Msg
 configAlert =
-    Modal.newConfig
-        |> setOpeningAnimation FromBottom
-        |> setOpenedAnimation OpenFromBottom
-        |> setClosingAnimation ToBottom
-        |> setHeaderCss "label alert"
-        |> setHeader (h2 [] [ text "Alert" ])
-        |> setBody bodyAlert
-        |> setFooter (footerSuccess ModalMsg.CloseModal ModalMsg.CloseModal)
+    Modal.newConfig ModalMsg
+        |> Modal.setOpeningAnimation FromBottom
+        |> Modal.setOpenedAnimation OpenFromBottom
+        |> Modal.setClosingAnimation ToBottom
+        |> Modal.setHeaderCss "label alert"
+        |> Modal.setHeader (h2 [] [ text "Alert" ])
+        |> Modal.setBody bodyAlert
+        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
 bodyAlert : Html msg
@@ -189,14 +190,14 @@ footerAlert confirmMsg closeMsg =
 
 configInfo : Modal.Config Msg
 configInfo =
-    Modal.newConfig
-        |> setOpeningAnimation FromRight
-        |> setOpenedAnimation OpenFromRight
-        |> setClosingAnimation ToRight
-        |> setHeaderCss "label primary"
-        |> setHeader (h2 [] [ text "Info" ])
-        |> setBody bodyAlert
-        |> setFooter (footerSuccess ModalMsg.CloseModal ModalMsg.CloseModal ModalMsg.CloseModal)
+    Modal.newConfig ModalMsg
+        |> Modal.setOpeningAnimation FromRight
+        |> Modal.setOpenedAnimation OpenFromRight
+        |> Modal.setClosingAnimation ToRight
+        |> Modal.setHeaderCss "label primary"
+        |> Modal.setHeader (h2 [] [ text "Info" ])
+        |> Modal.setBody bodyAlert
+        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
 bodyInfo : Html msg
@@ -258,28 +259,28 @@ view model =
             [ div []
                 [ button
                     [ class "button btn--width"
-                    , onClick (ModalMsg.OpenModal configSuccess)
+                    , onClick (Modal.openModal ModalMsg configSuccess)
                     ]
                     [ text "Modal Success" ]
                 ]
             , div []
                 [ button
                     [ class "button btn--width"
-                    , onClick (ModalMsg.OpenModal configWarning)
+                    , onClick (Modal.openModal ModalMsg configWarning)
                     ]
                     [ text "Modal Warning" ]
                 ]
             , div []
                 [ button
                     [ class "button btn--width"
-                    , onClick (ModalMsg.OpenModal configAlert)
+                    , onClick (Modal.openModal ModalMsg configAlert)
                     ]
                     [ text "Modal Alert" ]
                 ]
             , div []
                 [ button
                     [ class "button btn--width"
-                    , onClick (ModalMsg.OpenModal configInfo)
+                    , onClick (Modal.openModal ModalMsg configInfo)
                     ]
                     [ text "Modal Info" ]
                 ]
@@ -289,10 +290,11 @@ view model =
                 [ button
                     [ class "button btn--width"
                     , onClick
-                        (ModalMsg.OpenModal
+                        (Modal.openModal
+                            ModalMsg
                             (configSuccess
-                                |> setOpeningAnimation FromRight
-                                |> setClosingAnimation ToBottom
+                                |> Modal.setOpeningAnimation FromRight
+                                |> Modal.setClosingAnimation ToBottom
                             )
                         )
                     ]
@@ -304,10 +306,11 @@ view model =
                 [ button
                     [ class "button btn--width"
                     , onClick
-                        (ModalMsg.OpenModal
+                        (Modal.openModal
+                            ModalMsg
                             (configSuccess
-                                |> setOpeningAnimation FromLeft
-                                |> setClosingAnimation ToBottom
+                                |> Modal.setOpeningAnimation FromLeft
+                                |> Modal.setClosingAnimation ToBottom
                             )
                         )
                     ]
@@ -319,10 +322,11 @@ view model =
                 [ button
                     [ class "button btn--width"
                     , onClick
-                        (ModalMsg.OpenModal
+                        (Modal.openModal
+                            ModalMsg
                             (configSuccess
-                                |> setOpeningAnimation FromTop
-                                |> setClosingAnimation ToBottom
+                                |> Modal.setOpeningAnimation FromTop
+                                |> Modal.setClosingAnimation ToBottom
                             )
                         )
                     ]
@@ -334,10 +338,11 @@ view model =
                 [ button
                     [ class "button btn--width"
                     , onClick
-                        (ModalMsg.OpenModal
+                        (Modal.openModal
+                            ModalMsg
                             (configSuccess
-                                |> setOpeningAnimation FromRight
-                                |> setClosingAnimation ToLeft
+                                |> Modal.setOpeningAnimation FromRight
+                                |> Modal.setClosingAnimation ToLeft
                             )
                         )
                     ]
@@ -346,20 +351,11 @@ view model =
                     ]
                 ]
             ]
-        , mapStatusToModal model.status model.modal
+        , Modal.view model.modal
         ]
 
 
-mapStatusToModal : Status -> Modal -> Html Msg
-mapStatusToModal status modal =
-    let
-        config =
-            whichConfig status
-    in
-        Html.map ModalMsg (Modal.view config modal)
-
-
-whichConfig : Status -> Config Msg
+whichConfig : Status -> Modal.Config Msg
 whichConfig status =
     case status of
         Success ->
