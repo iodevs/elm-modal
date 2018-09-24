@@ -6,6 +6,10 @@ Install package usually a way:
 elm-package install iodevs/elm-modal
 ```
 
+and compile
+```
+elm make --warn example/Main.elm --output=example/main.js
+```
 
 ## Usage:
 * see `example` directory in this repository

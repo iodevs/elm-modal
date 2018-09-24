@@ -1,35 +1,39 @@
-module Modal exposing
-    ( ClosingAnimation(..)
-    , ClosingEffect(..)
-    , Config
-    , Model
-    , Msg
-    , OpenedAnimation(..)
-    , OpeningAnimation(..)
-    , animationEnd
-    , closeModal
-    , initModel
-    , newConfig
-    , openModal
-    , setBody
-    , setBodyCss
-    , setClosingAnimation
-    , setClosingEffect
-    , setFooter
-    , setFooterCss
-    , setHeader
-    , setHeaderCss
-    , setOpenedAnimation
-    , setOpeningAnimation
-    , update
-    , view
-    )
+module Modal
+    exposing
+        ( ClosingAnimation(..)
+        , ClosingEffect(..)
+        , Config
+        , Model
+        , Msg
+        , OpenedAnimation(..)
+        , OpeningAnimation(..)
+        , animationEnd
+        , closeModal
+        , initModel
+        , newConfig
+        , openModal
+        , setBody
+        , setBodyCss
+        , setClosingAnimation
+        , setClosingEffect
+        , setFooter
+        , setFooterCss
+        , setHeader
+        , setHeaderCss
+        , setOpenedAnimation
+        , setOpeningAnimation
+        , update
+        , view
+        , subscriptions
+        , cmdGetWindowSize
+        )
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-
+import Task
+import Window
 
 
 -- Model
@@ -40,11 +44,33 @@ type Model msg
     | Opened (Config msg)
     | Closing (Config msg)
     | Closed
+    | WindowSize Window.Size
 
 
 initModel : Model msg
 initModel =
     Closed
+
+
+
+-- subscriptions
+
+
+subscriptions : Sub (Msg msg)
+subscriptions =
+    Window.resizes GetWindowSize
+
+
+
+-- Commands
+
+
+cmdGetWindowSize =
+    Task.perform GetWindowSize Window.size
+
+
+
+-- Types
 
 
 type OpeningAnimation
@@ -101,155 +127,16 @@ type Config msg
         }
 
 
-{-| Create a new configuration for Modal.
 
-    newConfig |> setHeaderCss "header--bg-color"
-
--}
-newConfig : (Msg msg -> msg) -> Config msg
-newConfig tagger =
-    Config
-        { openingAnimation = FromTop
-        , openedAnimation = OpenFromTop
-        , closingAnimation = ToTop
-        , closingEffect = WithAnimate
-        , headerCss = ""
-        , header = text ""
-        , bodyCss = ""
-        , body = text ""
-        , footerCss = ""
-        , footer = text ""
-        , tagger = tagger
-        }
+-- Msg
 
 
 type Msg msg
     = OpenModal (Config msg)
     | CloseModal
     | AnimationEnd
-
-
-openModal : (Msg msg -> msg) -> Config msg -> msg
-openModal fn config =
-    fn (OpenModal config)
-
-
-closeModal : (Msg msg -> msg) -> msg
-closeModal fn =
-    fn CloseModal
-
-
-animationEnd : (Msg msg -> msg) -> msg
-animationEnd fn =
-    fn AnimationEnd
-
-
-
--- Setter for Config
-
-
-{-| Set styles as css of modal's body
-
-    Modal.setBodyCss "body--bg-color" config
-
--}
-setBodyCss : String -> Config msg -> Config msg
-setBodyCss newBodyCss config =
-    let
-        fn (Config c) =
-            Config { c | bodyCss = newBodyCss }
-    in
-    mapConfig fn config
-
-
-{-| Set styles and msg to the body of modal
-
-    bodySuccess : Html msg
-    bodySuccess =
-        div [][ text "Hello from body modal." ]
-
-    Modal.setBody bodySuccess config
-
--}
-setBody : Body msg -> Config msg -> Config msg
-setBody newBody config =
-    let
-        fn (Config c) =
-            Config { c | body = newBody }
-    in
-    mapConfig fn config
-
-
-setHeaderCss : String -> Config msg -> Config msg
-setHeaderCss newHeaderCss config =
-    let
-        fn (Config c) =
-            Config { c | headerCss = newHeaderCss }
-    in
-    mapConfig fn config
-
-
-setHeader : Header msg -> Config msg -> Config msg
-setHeader newHeader config =
-    let
-        fn (Config c) =
-            Config { c | header = newHeader }
-    in
-    mapConfig fn config
-
-
-setFooterCss : String -> Config msg -> Config msg
-setFooterCss newFooterCss config =
-    let
-        fn (Config c) =
-            Config { c | footerCss = newFooterCss }
-    in
-    mapConfig fn config
-
-
-setFooter : Footer msg -> Config msg -> Config msg
-setFooter newFooter config =
-    let
-        fn (Config c) =
-            Config { c | footer = newFooter }
-    in
-    mapConfig fn config
-
-
-setOpeningAnimation : OpeningAnimation -> Config msg -> Config msg
-setOpeningAnimation opening config =
-    let
-        fn (Config c) =
-            Config { c | openingAnimation = opening }
-    in
-    mapConfig fn config
-
-
-setOpenedAnimation : OpenedAnimation -> Config msg -> Config msg
-setOpenedAnimation opened config =
-    let
-        fn (Config c) =
-            Config { c | openedAnimation = opened }
-    in
-    mapConfig fn config
-
-
-setClosingAnimation : ClosingAnimation -> Config msg -> Config msg
-setClosingAnimation closing config =
-    let
-        fn (Config c) =
-            Config { c | closingAnimation = closing }
-    in
-    mapConfig fn config
-
-
-setClosingEffect : ClosingEffect -> Config msg -> Config msg
-setClosingEffect newClosingEffect config =
-    let
-        fn (Config c) =
-            Config { c | closingEffect = newClosingEffect }
-    in
-    mapConfig fn config
+    | GetWindowSize Window.Size
+    | WindowSizeChanged
 
 
 
@@ -271,6 +158,9 @@ setModalState modal =
 
         Closed ->
             Closed
+
+        WindowSize size ->
+            WindowSize size
 
 
 {-| Update the component state
@@ -302,6 +192,161 @@ update msg model =
             ( setModalState model
             , Cmd.none
             )
+
+        GetWindowSize size ->
+            ( setModalState model
+            , Cmd.none
+            )
+
+        WindowSizeChanged ->
+            ( model
+            , cmdGetWindowSize
+            )
+
+
+{-| Create a new configuration for Modal.
+
+    newConfig |> setHeaderCss "header--bg-color"
+
+-}
+newConfig : (Msg msg -> msg) -> Config msg
+newConfig tagger =
+    Config
+        { openingAnimation = FromTop
+        , openedAnimation = OpenFromTop
+        , closingAnimation = ToTop
+        , closingEffect = WithAnimate
+        , headerCss = ""
+        , header = text ""
+        , bodyCss = ""
+        , body = text ""
+        , footerCss = ""
+        , footer = text ""
+        , tagger = tagger
+        }
+
+
+openModal : (Msg msg -> msg) -> Config msg -> msg
+openModal fn config =
+    fn (OpenModal config)
+
+
+closeModal : (Msg msg -> msg) -> msg
+closeModal fn =
+    fn CloseModal
+
+
+animationEnd : (Msg msg -> msg) -> msg
+animationEnd fn =
+    fn AnimationEnd
+
+
+
+-- Setters for Config
+
+
+{-| Set styles as css of modal's body
+
+    Modal.setBodyCss "body--bg-color" config
+
+-}
+setBodyCss : String -> Config msg -> Config msg
+setBodyCss newBodyCss config =
+    let
+        fn (Config c) =
+            Config { c | bodyCss = newBodyCss }
+    in
+        mapConfig fn config
+
+
+{-| Set styles and msg to the body of modal
+
+    bodySuccess : Html msg
+    bodySuccess =
+        div [][ text "Hello from body modal." ]
+
+    Modal.setBody bodySuccess config
+
+-}
+setBody : Body msg -> Config msg -> Config msg
+setBody newBody config =
+    let
+        fn (Config c) =
+            Config { c | body = newBody }
+    in
+        mapConfig fn config
+
+
+setHeaderCss : String -> Config msg -> Config msg
+setHeaderCss newHeaderCss config =
+    let
+        fn (Config c) =
+            Config { c | headerCss = newHeaderCss }
+    in
+        mapConfig fn config
+
+
+setHeader : Header msg -> Config msg -> Config msg
+setHeader newHeader config =
+    let
+        fn (Config c) =
+            Config { c | header = newHeader }
+    in
+        mapConfig fn config
+
+
+setFooterCss : String -> Config msg -> Config msg
+setFooterCss newFooterCss config =
+    let
+        fn (Config c) =
+            Config { c | footerCss = newFooterCss }
+    in
+        mapConfig fn config
+
+
+setFooter : Footer msg -> Config msg -> Config msg
+setFooter newFooter config =
+    let
+        fn (Config c) =
+            Config { c | footer = newFooter }
+    in
+        mapConfig fn config
+
+
+setOpeningAnimation : OpeningAnimation -> Config msg -> Config msg
+setOpeningAnimation opening config =
+    let
+        fn (Config c) =
+            Config { c | openingAnimation = opening }
+    in
+        mapConfig fn config
+
+
+setOpenedAnimation : OpenedAnimation -> Config msg -> Config msg
+setOpenedAnimation opened config =
+    let
+        fn (Config c) =
+            Config { c | openedAnimation = opened }
+    in
+        mapConfig fn config
+
+
+setClosingAnimation : ClosingAnimation -> Config msg -> Config msg
+setClosingAnimation closing config =
+    let
+        fn (Config c) =
+            Config { c | closingAnimation = closing }
+    in
+        mapConfig fn config
+
+
+setClosingEffect : ClosingEffect -> Config msg -> Config msg
+setClosingEffect newClosingEffect config =
+    let
+        fn (Config c) =
+            Config { c | closingEffect = newClosingEffect }
+    in
+        mapConfig fn config
 
 
 

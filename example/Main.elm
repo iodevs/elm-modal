@@ -15,11 +15,20 @@ import Modal
 main : Program Never Model Msg
 main =
     program
-        { init = ( initModel, Cmd.none )
+        { init = ( initModel, Modal.cmdGetWindowSize )
         , view = view
         , update = update
-        , subscriptions = \model -> Sub.none
+        , subscriptions = subscriptions
         }
+
+
+
+--subscriptions
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Modal.subscription ModalMsg model.modal
 
 
 
@@ -72,9 +81,9 @@ update msg model =
                 ( updatedModal, cmdModal ) =
                     Modal.update modalMsg model.modal
             in
-            ( { model | modal = updatedModal }
-            , cmdModal
-            )
+                ( { model | modal = updatedModal }
+                , cmdModal
+                )
 
         Confirm ->
             ( model, Cmd.none )
