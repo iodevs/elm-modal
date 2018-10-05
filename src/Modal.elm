@@ -774,7 +774,7 @@ modalBottomClosing (BodySettings body) =
                 , ( 100
                   , [ Animations.property "opacity" "0"
                     , Animations.property "left" body.center.value
-                    , Animations.property "top" "75%"
+                    , Animations.property "top" "65%"
                     ]
                   )
                 ]
@@ -783,7 +783,6 @@ modalBottomClosing (BodySettings body) =
         , Css.opacity (Css.int 0)
         , Css.position Css.absolute
         , Css.property "left" body.center.value
-        , Css.top (Css.pct 100)
         ]
 
 
