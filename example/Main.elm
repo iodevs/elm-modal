@@ -21,8 +21,8 @@ module Main exposing
     )
 
 import Browser
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html exposing (Html, article, button, div, h1, h2, h3, i, img, li, text, ul)
+import Html.Attributes exposing (class, classList, src, style)
 import Html.Events exposing (onClick)
 import Modal
     exposing
@@ -88,7 +88,7 @@ type Status
 
 type Msg
     = NoOp
-    | Confirm
+    | Approve
     | ModalMsg (Modal.Msg Msg)
 
 
@@ -108,7 +108,7 @@ update msg model =
             , Cmd.map ModalMsg cmdModal
             )
 
-        Confirm ->
+        Approve ->
             ( model, Cmd.none )
 
         NoOp ->
@@ -123,12 +123,12 @@ view : Model -> Html Msg
 view model =
     div [ class "fnds__container" ]
         [ div [ class "row align-spaced align-top" ]
-            [ div [ class "columns medium-6 large-6" ]
+            [ div [ class "columns small-12 medium-6 large-6 hide-for-small-only" ]
                 [ img [ src "images/300x300.jpg", class "info-box" ]
                     []
                 ]
-            , div [ class "columns medium-6 large-6 info-box" ]
-                [ h3 [ class "info__header" ] [ text "Modal window " ]
+            , div [ class "columns small-12 medium-6 large-6 info-box" ]
+                [ h3 [ class "info__header" ] [ text "Modal window" ]
                 , div [] [ text "+ Elm" ]
                 , div [] [ text "+ Foundation" ]
                 , ul [ class "info-text" ]
@@ -245,6 +245,8 @@ view model =
 
 
 -- Various settings of Config for modal window
+-- These definitions can be located e.g. in
+-- src/components/Modal.elm
 
 
 configSuccess : Modal.Config Msg
@@ -253,20 +255,25 @@ configSuccess =
         |> Modal.setHeaderCss "label success label--border-radius"
         |> Modal.setHeader (h2 [] [ text "Success" ])
         |> Modal.setBodyCss "body__success--bg-color"
-        |> Modal.setBody (bodySuccess Confirm)
+        |> Modal.setBody (bodySuccess Approve)
         |> Modal.setFooterCss "footer__success--bg-color"
         |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
 bodySuccess : msg -> Html msg
-bodySuccess confirmMsg =
-    div []
-        [ text "Hlaseni v rozhlase"
-        , button
-            [ class "button"
-            , onClick confirmMsg
+bodySuccess approveMsg =
+    div
+        [ class "callout clearfix"
+        , style "width" "100%"
+        ]
+        [ div [] [ text "Elm is great." ]
+        , div [ class " float-right" ]
+            [ button
+                [ class "hollow button success"
+                , onClick approveMsg
+                ]
+                [ text "Approve" ]
             ]
-            [ text "Confirm" ]
         ]
 
 
@@ -302,7 +309,7 @@ configWarning =
 bodyWarning : Html msg
 bodyWarning =
     div []
-        [ text "Hlaseni na nadrazi" ]
+        [ text "Don't be worry. It's just warning..." ]
 
 
 footerWarning : msg -> Html msg
@@ -356,14 +363,14 @@ configInfo =
         |> Modal.setClosingAnimation ToRight
         |> Modal.setHeaderCss "label primary label--border-radius"
         |> Modal.setHeader (h2 [] [ text "Info" ])
-        |> Modal.setBody bodyAlert
+        |> Modal.setBody bodyInfo
         |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
 bodyInfo : Html msg
 bodyInfo =
     div []
-        [ text "Hlaseni v televizi" ]
+        [ text "Everything is fine." ]
 
 
 footerInfo : msg -> msg -> msg -> Html msg
