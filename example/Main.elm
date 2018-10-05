@@ -1,5 +1,26 @@
-module Main exposing (main)
+module Main exposing
+    ( Model
+    , Msg(..)
+    , Status(..)
+    , bodyAlert
+    , bodyInfo
+    , bodySuccess
+    , bodyWarning
+    , configAlert
+    , configInfo
+    , configSuccess
+    , configWarning
+    , footerAlert
+    , footerInfo
+    , footerSuccess
+    , footerWarning
+    , initModel
+    , main
+    , update
+    , view
+    )
 
+import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -10,25 +31,27 @@ import Modal
         , OpenedAnimation(..)
         , OpeningAnimation(..)
         )
+import Task
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    program
-        { init = ( initModel, Modal.cmdGetWindowSize )
-        , view = view
+    Browser.element
+        { init =
+            always
+                ( initModel
+                , Cmd.batch
+                    [ Cmd.map ModalMsg Modal.cmdGetWindowSize
+                    ]
+                )
+        , subscriptions =
+            \model ->
+                Sub.batch
+                    [ Sub.map ModalMsg Modal.subscriptions
+                    ]
         , update = update
-        , subscriptions = subscriptions
+        , view = view
         }
-
-
-
---subscriptions
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Modal.subscription ModalMsg model.modal
 
 
 
@@ -81,159 +104,15 @@ update msg model =
                 ( updatedModal, cmdModal ) =
                     Modal.update modalMsg model.modal
             in
-                ( { model | modal = updatedModal }
-                , cmdModal
-                )
+            ( { model | modal = updatedModal }
+            , Cmd.map ModalMsg cmdModal
+            )
 
         Confirm ->
             ( model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
-
-
-
--- Settings Config for Modal
-
-
-configSuccess : Modal.Config Msg
-configSuccess =
-    Modal.newConfig ModalMsg
-        |> Modal.setHeaderCss "label success"
-        |> Modal.setHeader (h2 [] [ text "Success" ])
-        |> Modal.setBodyCss "body__success--bg-color"
-        |> Modal.setBody (bodySuccess Confirm)
-        |> Modal.setFooterCss "footer__success--bg-color"
-        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
-
-
-bodySuccess : msg -> Html msg
-bodySuccess confirmMsg =
-    div []
-        [ text "Hlaseni v rozhlase"
-        , button
-            [ class "button"
-            , onClick confirmMsg
-            ]
-            [ text "Confirm" ]
-        ]
-
-
-footerSuccess : msg -> msg -> Html msg
-footerSuccess confirmMsg closeMsg =
-    div [ class "button-group" ]
-        [ button
-            [ class "button"
-            , onClick confirmMsg
-            ]
-            [ text "Confirm" ]
-        , button
-            [ class "button"
-            , onClick closeMsg
-            ]
-            [ text "Close" ]
-        ]
-
-
-configWarning : Modal.Config Msg
-configWarning =
-    Modal.newConfig ModalMsg
-        |> Modal.setClosingEffect WithoutAnimate
-        |> Modal.setOpeningAnimation FromTop
-        |> Modal.setOpenedAnimation OpenFromTop
-        |> Modal.setClosingAnimation ToTop
-        |> Modal.setHeaderCss "label warning"
-        |> Modal.setHeader (h2 [] [ text "Warning" ])
-        |> Modal.setBody bodyWarning
-        |> Modal.setFooter (footerWarning (Modal.closeModal ModalMsg))
-
-
-bodyWarning : Html msg
-bodyWarning =
-    div []
-        [ text "Hlaseni na nadrazi" ]
-
-
-footerWarning : msg -> Html msg
-footerWarning msg =
-    button
-        [ class "button"
-        , onClick msg
-        ]
-        [ text "Close" ]
-
-
-configAlert : Modal.Config Msg
-configAlert =
-    Modal.newConfig ModalMsg
-        |> Modal.setOpeningAnimation FromBottom
-        |> Modal.setOpenedAnimation OpenFromBottom
-        |> Modal.setClosingAnimation ToBottom
-        |> Modal.setHeaderCss "label alert"
-        |> Modal.setHeader (h2 [] [ text "Alert" ])
-        |> Modal.setBody bodyAlert
-        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
-
-
-bodyAlert : Html msg
-bodyAlert =
-    div []
-        [ text "Run and make panic..." ]
-
-
-footerAlert : msg -> msg -> Html msg
-footerAlert confirmMsg closeMsg =
-    div [ class "button-group" ]
-        [ button
-            [ class "button"
-            , onClick confirmMsg
-            ]
-            [ text "Stop" ]
-        , button
-            [ class "button"
-            , onClick closeMsg
-            ]
-            [ text "Close" ]
-        ]
-
-
-configInfo : Modal.Config Msg
-configInfo =
-    Modal.newConfig ModalMsg
-        |> Modal.setOpeningAnimation FromRight
-        |> Modal.setOpenedAnimation OpenFromRight
-        |> Modal.setClosingAnimation ToRight
-        |> Modal.setHeaderCss "label primary"
-        |> Modal.setHeader (h2 [] [ text "Info" ])
-        |> Modal.setBody bodyAlert
-        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
-
-
-bodyInfo : Html msg
-bodyInfo =
-    div []
-        [ text "Hlaseni v televizi" ]
-
-
-footerInfo : msg -> msg -> msg -> Html msg
-footerInfo confirmMsg callMsg closeMsg =
-    div [ class "button-group" ]
-        [ button
-            [ class "button"
-            , onClick confirmMsg
-            ]
-            [ text "Ok" ]
-        , button
-            [ class "button"
-            , onClick callMsg
-            ]
-            [ text "Call" ]
-        , button
-            [ class "button"
-            , onClick closeMsg
-            ]
-            [ text "Close" ]
-        ]
 
 
 
@@ -245,7 +124,7 @@ view model =
     div [ class "fnds__container" ]
         [ div [ class "row align-spaced align-top" ]
             [ div [ class "columns medium-6 large-6" ]
-                [ img [ src "static/img/elm.jpg", class "info-box" ]
+                [ img [ src "images/300x300.jpg", class "info-box" ]
                     []
                 ]
             , div [ class "columns medium-6 large-6 info-box" ]
@@ -302,8 +181,8 @@ view model =
                         (Modal.openModal
                             ModalMsg
                             (configSuccess
-                                |> Modal.setOpeningAnimation FromRight
-                                |> Modal.setClosingAnimation ToBottom
+                                |> Modal.setOpeningAnimation FromLeft
+                                |> Modal.setClosingAnimation ToRight
                             )
                         )
                     ]
@@ -364,17 +243,145 @@ view model =
         ]
 
 
-whichConfig : Status -> Modal.Config Msg
-whichConfig status =
-    case status of
-        Success ->
-            configSuccess
 
-        Warning ->
-            configWarning
+-- Various settings of Config for modal window
 
-        Alert ->
-            configAlert
 
-        Info ->
-            configInfo
+configSuccess : Modal.Config Msg
+configSuccess =
+    Modal.newConfig ModalMsg
+        |> Modal.setHeaderCss "label success label--border-radius"
+        |> Modal.setHeader (h2 [] [ text "Success" ])
+        |> Modal.setBodyCss "body__success--bg-color"
+        |> Modal.setBody (bodySuccess Confirm)
+        |> Modal.setFooterCss "footer__success--bg-color"
+        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
+
+
+bodySuccess : msg -> Html msg
+bodySuccess confirmMsg =
+    div []
+        [ text "Hlaseni v rozhlase"
+        , button
+            [ class "button"
+            , onClick confirmMsg
+            ]
+            [ text "Confirm" ]
+        ]
+
+
+footerSuccess : msg -> msg -> Html msg
+footerSuccess confirmMsg closeMsg =
+    div [ class "button-group" ]
+        [ button
+            [ class "button"
+            , onClick confirmMsg
+            ]
+            [ text "Confirm" ]
+        , button
+            [ class "button"
+            , onClick closeMsg
+            ]
+            [ text "Close" ]
+        ]
+
+
+configWarning : Modal.Config Msg
+configWarning =
+    Modal.newConfig ModalMsg
+        |> Modal.setClosingEffect WithoutAnimate
+        |> Modal.setOpeningAnimation FromTop
+        |> Modal.setOpenedAnimation OpenFromTop
+        |> Modal.setClosingAnimation ToTop
+        |> Modal.setHeaderCss "label warning label--border-radius"
+        |> Modal.setHeader (h2 [] [ text "Warning" ])
+        |> Modal.setBody bodyWarning
+        |> Modal.setFooter (footerWarning (Modal.closeModal ModalMsg))
+
+
+bodyWarning : Html msg
+bodyWarning =
+    div []
+        [ text "Hlaseni na nadrazi" ]
+
+
+footerWarning : msg -> Html msg
+footerWarning msg =
+    button
+        [ class "button"
+        , onClick msg
+        ]
+        [ text "Close" ]
+
+
+configAlert : Modal.Config Msg
+configAlert =
+    Modal.newConfig ModalMsg
+        |> Modal.setOpeningAnimation FromBottom
+        |> Modal.setOpenedAnimation OpenFromBottom
+        |> Modal.setClosingAnimation ToBottom
+        |> Modal.setHeaderCss "label alert label--border-radius"
+        |> Modal.setHeader (h2 [] [ text "Alert" ])
+        |> Modal.setBody bodyAlert
+        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
+
+
+bodyAlert : Html msg
+bodyAlert =
+    div []
+        [ text "Run and make panic..." ]
+
+
+footerAlert : msg -> msg -> Html msg
+footerAlert confirmMsg closeMsg =
+    div [ class "button-group" ]
+        [ button
+            [ class "button"
+            , onClick confirmMsg
+            ]
+            [ text "Stop" ]
+        , button
+            [ class "button"
+            , onClick closeMsg
+            ]
+            [ text "Close" ]
+        ]
+
+
+configInfo : Modal.Config Msg
+configInfo =
+    Modal.newConfig ModalMsg
+        |> Modal.setOpeningAnimation FromRight
+        |> Modal.setOpenedAnimation OpenFromRight
+        |> Modal.setClosingAnimation ToRight
+        |> Modal.setHeaderCss "label primary label--border-radius"
+        |> Modal.setHeader (h2 [] [ text "Info" ])
+        |> Modal.setBody bodyAlert
+        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
+
+
+bodyInfo : Html msg
+bodyInfo =
+    div []
+        [ text "Hlaseni v televizi" ]
+
+
+footerInfo : msg -> msg -> msg -> Html msg
+footerInfo confirmMsg callMsg closeMsg =
+    div [ class "button-group" ]
+        [ button
+            [ class "button"
+            , onClick confirmMsg
+            ]
+            [ text "Ok" ]
+        , button
+            [ class "button"
+            , onClick callMsg
+            ]
+            [ text "Call" ]
+        , button
+            [ class "button"
+            , onClick closeMsg
+            ]
+            [ text "Close" ]
+        ]

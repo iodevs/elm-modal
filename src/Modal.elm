@@ -1,39 +1,46 @@
-module Modal
-    exposing
-        ( ClosingAnimation(..)
-        , ClosingEffect(..)
-        , Config
-        , Model
-        , Msg
-        , OpenedAnimation(..)
-        , OpeningAnimation(..)
-        , animationEnd
-        , closeModal
-        , initModel
-        , newConfig
-        , openModal
-        , setBody
-        , setBodyCss
-        , setClosingAnimation
-        , setClosingEffect
-        , setFooter
-        , setFooterCss
-        , setHeader
-        , setHeaderCss
-        , setOpenedAnimation
-        , setOpeningAnimation
-        , update
-        , view
-        , subscriptions
-        , cmdGetWindowSize
-        )
+module Modal exposing
+    ( ClosingAnimation(..)
+    , ClosingEffect(..)
+    , Config
+    , Model
+    , Msg
+    , OpenedAnimation(..)
+    , OpeningAnimation(..)
+    , animationEnd
+    , closeModal
+    , cmdGetWindowSize
+    , initModel
+    , newConfig
+    , openModal
+    , setBody
+    , setBodyCss
+    , setClosingAnimation
+    , setClosingEffect
+    , setFooter
+    , setFooterCss
+    , setHeader
+    , setHeaderCss
+    , setOpenedAnimation
+    , setOpeningAnimation
+    , subscriptions
+    , update
+    , view
+    )
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (on, onClick)
+import Browser.Dom exposing (getViewport)
+import Browser.Events exposing (onResize)
+import Css
+import Css.Animations as Animations
+import Css.Transitions as Transitions
+import History exposing (History(..), create, current, forward, rewind, rewindAll)
+import Html
+import Html.Styled as Styled exposing (..)
+import Html.Styled.Attributes exposing (..)
+import Html.Styled.Events exposing (on, onClick)
 import Json.Decode as Json
 import Task
-import Window
+import VirtualDom
+
 
 
 -- Model
@@ -44,7 +51,6 @@ type Model msg
     | Opened (Config msg)
     | Closing (Config msg)
     | Closed
-    | WindowSize Window.Size
 
 
 initModel : Model msg
@@ -53,20 +59,36 @@ initModel =
 
 
 
--- subscriptions
+-- Commands
+
+
+cmdGetWindowSize : Cmd (Msg msg)
+cmdGetWindowSize =
+    Task.perform
+        (\{ viewport } ->
+            GetWindowSize (round viewport.width) (round viewport.height)
+        )
+        getViewport
+
+
+
+-- Subscriptions
 
 
 subscriptions : Sub (Msg msg)
 subscriptions =
-    Window.resizes GetWindowSize
+    onResize GetWindowSize
 
 
 
--- Commands
+-- Msg
 
 
-cmdGetWindowSize =
-    Task.perform GetWindowSize Window.size
+type Msg msg
+    = OpenModal (Config msg)
+    | CloseModal
+    | AnimationEnd
+    | GetWindowSize Int Int
 
 
 
@@ -99,16 +121,33 @@ type ClosingEffect
     | WithAnimate
 
 
+type WindowSize
+    = WindowSize { width : Int, height : Int }
+
+
+type BodySettings
+    = BodySettings
+        { fromTop : Css.Px
+        , width : History.History Css.Px
+        , center : Css.Pct
+        , borderRadius : Css.Px
+        }
+
+
+type History a
+    = History a (List a)
+
+
 type alias Header msg =
-    Html msg
+    Styled.Html msg
 
 
 type alias Body msg =
-    Html msg
+    Styled.Html msg
 
 
 type alias Footer msg =
-    Html msg
+    Styled.Html msg
 
 
 type Config msg
@@ -123,85 +162,10 @@ type Config msg
         , body : Body msg
         , footerCss : String
         , footer : Footer msg
+        , modalBodySettings : BodySettings
         , tagger : Msg msg -> msg
+        , windowSize : WindowSize
         }
-
-
-
--- Msg
-
-
-type Msg msg
-    = OpenModal (Config msg)
-    | CloseModal
-    | AnimationEnd
-    | GetWindowSize Window.Size
-    | WindowSizeChanged
-
-
-
--- Update
-
-
-{-| -}
-setModalState : Model msg -> Model msg
-setModalState modal =
-    case modal of
-        Opening config ->
-            Opened config
-
-        Opened config ->
-            Closing config
-
-        Closing _ ->
-            Closed
-
-        Closed ->
-            Closed
-
-        WindowSize size ->
-            WindowSize size
-
-
-{-| Update the component state
-
-    ModalMsg subMsg ->
-        let
-            ( updated, cmd ) =
-                Modal.update setConfig subMsg model.modal
-        in
-            ( { model | modal = updated }
-            , Cmd.map ModalMsg cmd
-            )
-
--}
-update : Msg msg -> Model msg -> ( Model msg, Cmd msg )
-update msg model =
-    case msg of
-        OpenModal config ->
-            ( Opening config
-            , Cmd.none
-            )
-
-        CloseModal ->
-            ( setModalState model
-            , Cmd.none
-            )
-
-        AnimationEnd ->
-            ( setModalState model
-            , Cmd.none
-            )
-
-        GetWindowSize size ->
-            ( setModalState model
-            , Cmd.none
-            )
-
-        WindowSizeChanged ->
-            ( model
-            , cmdGetWindowSize
-            )
 
 
 {-| Create a new configuration for Modal.
@@ -222,7 +186,16 @@ newConfig tagger =
         , body = text ""
         , footerCss = ""
         , footer = text ""
+        , modalBodySettings =
+            BodySettings
+                { fromTop = Css.px 200
+                , width = create (Css.px 600)
+                , center = Css.pct 33
+                , borderRadius = Css.px 5
+                }
         , tagger = tagger
+        , windowSize =
+            WindowSize { width = 0, height = 0 }
         }
 
 
@@ -242,6 +215,121 @@ animationEnd fn =
 
 
 
+-- Update
+
+
+{-| Update the component state. In your parent update function
+just add
+
+    ModalMsg modalMsg ->
+        let
+            ( updatedModal, cmdModal ) =
+                Modal.update modalMsg model.modal
+        in
+        ( { model | modal = updatedModal }
+        , Cmd.map ModalMsg cmdModal
+        )
+
+-}
+update : Msg msg -> Model msg -> ( Model msg, Cmd (Msg msg) )
+update msg model =
+    case msg of
+        OpenModal config ->
+            ( Opening config
+            , cmdGetWindowSize
+            )
+
+        CloseModal ->
+            ( setModalState model
+            , Cmd.none
+            )
+
+        AnimationEnd ->
+            ( setModalState model
+            , Cmd.none
+            )
+
+        GetWindowSize width height ->
+            ( setModalBodyPosition width height model
+            , Cmd.none
+            )
+
+
+
+-- View
+
+
+{-| Render a view of modal window
+
+    Modal.view model.modal
+
+-}
+view : Model msg -> Html.Html msg
+view modal =
+    Styled.toUnstyled <|
+        case modal of
+            Opening (Config config) ->
+                div [ modalFade ]
+                    [ modalBodyView
+                        (Just AnimationEnd)
+                        (openingAnimationClass config.openingAnimation config.modalBodySettings)
+                        (Config config)
+                    ]
+
+            Opened (Config config) ->
+                div [ modalFade ]
+                    [ modalBodyView
+                        Nothing
+                        (openedAnimationClass config.openedAnimation config.modalBodySettings)
+                        (Config config)
+                    ]
+
+            Closing (Config config) ->
+                div
+                    [ modalFade
+                    , modalClose
+                    , closingEffectClass config.closingEffect
+                    ]
+                    [ modalBodyView
+                        (Just AnimationEnd)
+                        (closingAnimationClass config.closingAnimation config.modalBodySettings)
+                        (Config config)
+                    ]
+
+            Closed ->
+                text ""
+
+
+{-| @priv
+View of modal body
+-}
+modalBodyView : Maybe (Msg msg) -> Attribute msg -> Config msg -> Html msg
+modalBodyView animationTagger animation (Config config) =
+    let
+        animTgr =
+            case animationTagger of
+                Just msg ->
+                    onAnimationEnd (config.tagger msg)
+
+                Nothing ->
+                    css []
+    in
+    div
+        [ modalBody
+            config.modalBodySettings
+        , animation
+        , animTgr
+        ]
+        [ div [ class ("modal__header " ++ config.headerCss) ]
+            [ config.header ]
+        , div [ class ("modal__content " ++ config.bodyCss) ]
+            [ config.body ]
+        , div [ class ("modal__footer " ++ config.footerCss) ]
+            [ config.footer ]
+        ]
+
+
+
 -- Setters for Config
 
 
@@ -256,7 +344,7 @@ setBodyCss newBodyCss config =
         fn (Config c) =
             Config { c | bodyCss = newBodyCss }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 {-| Set styles and msg to the body of modal
@@ -268,13 +356,13 @@ setBodyCss newBodyCss config =
     Modal.setBody bodySuccess config
 
 -}
-setBody : Body msg -> Config msg -> Config msg
+setBody : VirtualDom.Node msg -> Config msg -> Config msg
 setBody newBody config =
     let
         fn (Config c) =
-            Config { c | body = newBody }
+            Config { c | body = Styled.fromUnstyled newBody }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setHeaderCss : String -> Config msg -> Config msg
@@ -283,16 +371,16 @@ setHeaderCss newHeaderCss config =
         fn (Config c) =
             Config { c | headerCss = newHeaderCss }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
-setHeader : Header msg -> Config msg -> Config msg
+setHeader : VirtualDom.Node msg -> Config msg -> Config msg
 setHeader newHeader config =
     let
         fn (Config c) =
-            Config { c | header = newHeader }
+            Config { c | header = Styled.fromUnstyled newHeader }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setFooterCss : String -> Config msg -> Config msg
@@ -301,16 +389,16 @@ setFooterCss newFooterCss config =
         fn (Config c) =
             Config { c | footerCss = newFooterCss }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
-setFooter : Footer msg -> Config msg -> Config msg
+setFooter : VirtualDom.Node msg -> Config msg -> Config msg
 setFooter newFooter config =
     let
         fn (Config c) =
-            Config { c | footer = newFooter }
+            Config { c | footer = Styled.fromUnstyled newFooter }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setOpeningAnimation : OpeningAnimation -> Config msg -> Config msg
@@ -319,7 +407,7 @@ setOpeningAnimation opening config =
         fn (Config c) =
             Config { c | openingAnimation = opening }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setOpenedAnimation : OpenedAnimation -> Config msg -> Config msg
@@ -328,7 +416,7 @@ setOpenedAnimation opened config =
         fn (Config c) =
             Config { c | openedAnimation = opened }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setClosingAnimation : ClosingAnimation -> Config msg -> Config msg
@@ -337,7 +425,7 @@ setClosingAnimation closing config =
         fn (Config c) =
             Config { c | closingAnimation = closing }
     in
-        mapConfig fn config
+    mapConfig fn config
 
 
 setClosingEffect : ClosingEffect -> Config msg -> Config msg
@@ -346,131 +434,409 @@ setClosingEffect newClosingEffect config =
         fn (Config c) =
             Config { c | closingEffect = newClosingEffect }
     in
-        mapConfig fn config
+    mapConfig fn config
+
+
+setBodySettings : (BodySettings -> BodySettings) -> Config msg -> Config msg
+setBodySettings updateFn (Config c) =
+    Config { c | modalBodySettings = updateFn c.modalBodySettings }
 
 
 
--- View
+-- Private setters for modal window
 
 
-{-| Render the view
+openingAnimationClass : OpeningAnimation -> BodySettings -> Attribute msg
+openingAnimationClass animation bodySettings =
+    case animation of
+        FromTop ->
+            modalTopOpening bodySettings
 
-    Html.map ModalMsg (Modal.view yourConfig model.modal)
+        FromRight ->
+            modalRigthOpening bodySettings
 
--}
-view : Model msg -> Html msg
-view modal =
-    case modal of
-        Opening (Config config) ->
-            div [ class "modal" ]
-                [ div
-                    [ class ("modal__body " ++ openingAnimationClass config.openingAnimation)
-                    , onAnimationEnd (config.tagger AnimationEnd)
-                    ]
-                    [ div
-                        [ class ("modal__header " ++ config.headerCss) ]
-                        [ config.header ]
-                    , div [ class ("modal__content " ++ config.bodyCss) ]
-                        [ config.body ]
-                    , div [ class ("modal__footer " ++ config.footerCss) ]
-                        [ config.footer ]
-                    ]
-                ]
+        FromBottom ->
+            modalBottomOpening bodySettings
 
-        Opened (Config config) ->
-            div [ class "modal" ]
-                [ div
-                    [ class ("modal__body " ++ openedAnimationClass config.openedAnimation) ]
-                    [ div
-                        [ class ("modal__header " ++ config.headerCss) ]
-                        [ config.header ]
-                    , div [ class ("modal__content " ++ config.bodyCss) ]
-                        [ config.body ]
-                    , div [ class ("modal__footer " ++ config.footerCss) ]
-                        [ config.footer ]
-                    ]
-                ]
-
-        Closing (Config config) ->
-            div [ class ("modal modal--close " ++ closingEffectClass config.closingEffect) ]
-                [ div
-                    [ class ("modal__body " ++ closingAnimationClass config.closingAnimation)
-                    , onAnimationEnd (config.tagger AnimationEnd)
-                    ]
-                    [ div
-                        [ class ("modal__header " ++ config.headerCss) ]
-                        [ config.header ]
-                    , div [ class ("modal__content " ++ config.bodyCss) ]
-                        [ config.body ]
-                    , div [ class ("modal__footer " ++ config.footerCss) ]
-                        [ config.footer ]
-                    ]
-                ]
-
-        Closed ->
-            text ""
+        FromLeft ->
+            modalLeftOpening bodySettings
 
 
+openedAnimationClass : OpenedAnimation -> BodySettings -> Attribute msg
+openedAnimationClass animation bodySettings =
+    case animation of
+        OpenFromTop ->
+            modalOpenFromTop bodySettings
 
--- Private setters for Modal
+        OpenFromRight ->
+            modalOpenFromRigth bodySettings
+
+        OpenFromBottom ->
+            modalOpenFromBottom bodySettings
+
+        OpenFromLeft ->
+            modalOpenFromLeft bodySettings
 
 
-closingEffectClass : ClosingEffect -> String
+closingAnimationClass : ClosingAnimation -> BodySettings -> Attribute msg
+closingAnimationClass animation bodySettings =
+    case animation of
+        ToTop ->
+            modalTopClosing bodySettings
+
+        ToRight ->
+            modalRightClosing bodySettings
+
+        ToBottom ->
+            modalBottomClosing bodySettings
+
+        ToLeft ->
+            modalLeftClosing bodySettings
+
+
+closingEffectClass : ClosingEffect -> Attribute msg
 closingEffectClass animation =
     case animation of
         WithoutAnimate ->
-            "modal--without-animate"
+            css [ Css.display Css.none ]
 
         WithAnimate ->
-            ""
+            css []
 
 
-openingAnimationClass : OpeningAnimation -> String
-openingAnimationClass animation =
-    case animation of
-        FromTop ->
-            "modal--top-opening"
 
-        FromRight ->
-            "modal--right-opening"
-
-        FromBottom ->
-            "modal--bottom-opening"
-
-        FromLeft ->
-            "modal--left-opening"
+-- Private css style and animations for modal window
 
 
-closingAnimationClass : ClosingAnimation -> String
-closingAnimationClass animation =
-    case animation of
-        ToTop ->
-            "modal--top-closing"
-
-        ToRight ->
-            "modal--right-closing"
-
-        ToBottom ->
-            "modal--bottom-closing"
-
-        ToLeft ->
-            "modal--left-closing"
+modalFade : Attribute msg
+modalFade =
+    css
+        [ Css.position Css.absolute
+        , Css.top (Css.px 0)
+        , Css.bottom (Css.px 0)
+        , Css.left (Css.px 0)
+        , Css.right (Css.px 0)
+        , Css.backgroundColor (Css.rgba 0 0 0 0.5)
+        , Css.zIndex (Css.int 999)
+        , Css.overflow Css.hidden
+        ]
 
 
-openedAnimationClass : OpenedAnimation -> String
-openedAnimationClass animation =
-    case animation of
-        OpenFromTop ->
-            "modal--open-from-top"
+modalBody : BodySettings -> Attribute msg
+modalBody (BodySettings body) =
+    css
+        [ Css.displayFlex
+        , Css.flexDirection Css.column
+        , Css.alignItems Css.center
+        , Css.property "align-content" "space-between"
+        , Css.width (current body.width)
+        , Css.height Css.auto
+        , Css.borderRadius body.borderRadius
+        , Css.boxShadow4 (Css.px 0) (Css.px 3) (Css.px 7) (Css.rgba 0 0 0 0.75)
+        , Css.backgroundColor (Css.rgb 255 255 255)
+        ]
 
-        OpenFromRight ->
-            "modal--open-from-right"
 
-        OpenFromBottom ->
-            "modal--open-from-bottom"
 
-        OpenFromLeft ->
-            "modal--open-from-left"
+-- Opening animations
+
+
+modalTopOpening : BodySettings -> Attribute msg
+modalTopOpening (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" "0"
+                    ]
+                  )
+                , ( 75
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "1s"
+        , Css.property "left" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+modalRigthOpening : BodySettings -> Attribute msg
+modalRigthOpening (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "right" "0"
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                , ( 75
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "right" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "1s"
+        , Css.property "right" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+modalBottomOpening : BodySettings -> Attribute msg
+modalBottomOpening (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" "75%"
+                    ]
+                  )
+                , ( 75
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "1s"
+        , Css.property "left" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+modalLeftOpening : BodySettings -> Attribute msg
+modalLeftOpening (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "left" "0"
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                , ( 75
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "1s"
+        , Css.property "left" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+
+-- Open animations
+
+
+modalOpenFromTop : BodySettings -> Attribute msg
+modalOpenFromTop (BodySettings body) =
+    css
+        [ --Css.animationName
+          -- (Animations.keyframes
+          --     [ ( 0
+          --       , [ Animations.property "opacity" "0"
+          --         , Animations.property "left" body.center.value
+          --         , Animations.property "top" "0"
+          --         ]
+          --       )
+          --     , ( 75
+          --       , [ Animations.property "opacity" "1"
+          --         , Animations.property "left" body.center.value
+          --         , Animations.property "top" body.fromTop.value
+          --         ]
+          --       )
+          --     ]
+          -- )
+          -- , Css.property "animation-duration" "1s"
+          Css.property "left" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+modalOpenFromRigth : BodySettings -> Attribute msg
+modalOpenFromRigth (BodySettings body) =
+    css
+        [ Css.property "right" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+modalOpenFromBottom : BodySettings -> Attribute msg
+modalOpenFromBottom (BodySettings body) =
+    css
+        [ Css.property "left" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+modalOpenFromLeft : BodySettings -> Attribute msg
+modalOpenFromLeft (BodySettings body) =
+    css
+        [ Css.property "left" body.center.value
+        , Css.top body.fromTop
+        , Css.position Css.absolute
+        ]
+
+
+
+-- Closing animations
+
+
+modalTopClosing : BodySettings -> Attribute msg
+modalTopClosing (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                , ( 100
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" "20px"
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "0.5s"
+        , Css.opacity (Css.int 0)
+        , Css.position Css.absolute
+        , Css.property "left" body.center.value
+        , Css.top (Css.px 0)
+        ]
+
+
+modalRightClosing : BodySettings -> Attribute msg
+modalRightClosing (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "right" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                , ( 100
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "right" "0"
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "0.5s"
+        , Css.opacity (Css.int 0)
+        , Css.position Css.absolute
+        , Css.right (Css.px 0)
+        , Css.top body.fromTop
+        ]
+
+
+modalBottomClosing : BodySettings -> Attribute msg
+modalBottomClosing (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                , ( 100
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" "75%"
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "0.5s"
+        , Css.opacity (Css.int 0)
+        , Css.position Css.absolute
+        , Css.property "left" body.center.value
+        , Css.top (Css.pct 100)
+        ]
+
+
+modalLeftClosing : BodySettings -> Attribute msg
+modalLeftClosing (BodySettings body) =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "opacity" "1"
+                    , Animations.property "left" body.center.value
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                , ( 100
+                  , [ Animations.property "opacity" "0"
+                    , Animations.property "left" "0"
+                    , Animations.property "top" body.fromTop.value
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "0.5s"
+        , Css.opacity (Css.int 0)
+        , Css.position Css.absolute
+        , Css.left (Css.px 0)
+        , Css.top body.fromTop
+        ]
+
+
+
+-- Modal close animation
+
+
+modalClose : Attribute msg
+modalClose =
+    css
+        [ Css.animationName
+            (Animations.keyframes
+                [ ( 0
+                  , [ Animations.property "background" "rgba(0, 0, 0, 0.5)"
+                    ]
+                  )
+                , ( 100
+                  , [ Animations.property "background" "rgba(0, 0, 0, 0)"
+                    , Animations.property "display" "none"
+                    ]
+                  )
+                ]
+            )
+        , Css.property "animation-duration" "0.5s"
+        , Css.backgroundColor (Css.rgba 0 0 0 0)
+        ]
 
 
 
@@ -492,12 +858,112 @@ onAnimationEnd msg =
     on "animationend" (Json.succeed msg)
 
 
+setWindowSize : Int -> Int -> Config msg -> Config msg
+setWindowSize width height config =
+    let
+        fn (Config c) =
+            Config { c | windowSize = WindowSize { width = width, height = height } }
+    in
+    mapConfig fn config
+
+
+setBodyWith : Int -> BodySettings -> BodySettings
+setBodyWith width (BodySettings bs) =
+    let
+        windowWidth =
+            toFloat width
+
+        defaultBodyWidth =
+            bs.width
+                |> rewind
+                |> current
+                |> .numericValue
+
+        setW =
+            if defaultBodyWidth < windowWidth then
+                bs.width |> rewindAll
+
+            else
+                bs.width |> forward (Css.px windowWidth)
+    in
+    BodySettings { bs | width = setW }
+
+
+setModalBodyPosition width height model =
+    case model of
+        Opening config ->
+            config
+                |> setWindowSize width height
+                |> setBodySettings (setBodyCenter width >> setBodyWith width)
+                |> Opening
+
+        Opened config ->
+            config
+                |> setWindowSize width height
+                |> setBodySettings (setBodyCenter width >> setBodyWith width)
+                |> Opened
+
+        Closing config ->
+            config
+                |> setWindowSize width height
+                |> setBodySettings (setBodyCenter width >> setBodyWith width)
+                |> Closing
+
+        Closed ->
+            Closed
+
+
 
 -- Private helpers
 
 
 {-| @priv
+Helper for update config
 -}
 mapConfig : (Config msg -> Config msg) -> Config msg -> Config msg
 mapConfig fn config =
     fn config
+
+
+{-| @priv
+Helper for update function
+-}
+setModalState : Model msg -> Model msg
+setModalState modal =
+    case modal of
+        Opening config ->
+            Opened config
+
+        Opened config ->
+            Closing config
+
+        Closing _ ->
+            Closed
+
+        Closed ->
+            Closed
+
+
+{-| @priv
+Centering for modal body
+-}
+setBodyCenter : Int -> BodySettings -> BodySettings
+setBodyCenter width (BodySettings bs) =
+    let
+        defaultBodyWidth =
+            bs.width
+                |> rewindAll
+                |> current
+                |> .numericValue
+
+        windowWidth =
+            toFloat width
+
+        setC =
+            if defaultBodyWidth >= windowWidth then
+                0
+
+            else
+                50 * (1 - defaultBodyWidth / windowWidth)
+    in
+    BodySettings { bs | center = Css.pct setC }

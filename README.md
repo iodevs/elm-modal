@@ -1,9 +1,9 @@
 # elm-modal
 A library for displaying Modal window. You can set a behaviour and style of your modal window by a Config settings.
 
-Install package usually a way:
+Install package usually a way (elm-0.19):
 ```
-elm-package install iodevs/elm-modal
+elm install iodevs/elm-modal
 ```
 
 and compile
