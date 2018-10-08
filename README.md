@@ -104,7 +104,7 @@ configAlert =
         |> Modal.setHeaderCss "label alert"
         |> Modal.setHeader (h2 [] [ text "Alert" ])
         |> Modal.setBody bodyAlert
-        |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
+        |> Modal.setFooter (footerAlert (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
 bodyAlert : Html msg
