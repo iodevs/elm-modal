@@ -84,7 +84,7 @@ view model =
 ```
 
 ### Components/ConfigModal.elm
-Here you can define a lot of various Modal windows. In our case we defined "Alert" modal. Also you visit [elm-package](https://package.elm-lang.org/packages/iodevs/elm-history/latest/) where you can find an another settings functions.
+Here you can define a lot of various Modal windows. In our case we defined "Alert" modal. Also you visit [elm-package](https://package.elm-lang.org/packages/iodevs/elm-modal/latest/) where you can find an another settings functions.
 
 ```haskell
 import Modal

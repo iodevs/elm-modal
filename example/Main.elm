@@ -1,24 +1,4 @@
-module Main exposing
-    ( Model
-    , Msg(..)
-    , Status(..)
-    , bodyAlert
-    , bodyInfo
-    , bodySuccess
-    , bodyWarning
-    , configAlert
-    , configInfo
-    , configSuccess
-    , configWarning
-    , footerAlert
-    , footerInfo
-    , footerSuccess
-    , footerWarning
-    , initModel
-    , main
-    , update
-    , view
-    )
+module Main exposing (main)
 
 import Browser
 import Html exposing (Html, article, button, div, h1, h2, h3, i, img, li, text, ul)
