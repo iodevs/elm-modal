@@ -13,7 +13,10 @@ module Modal exposing
     , newConfig
     , openModal
     , setBody
+    , setBodyBorderRadius
     , setBodyCss
+    , setBodyFromTop
+    , setBodyWith
     , setClosingAnimation
     , setClosingEffect
     , setFooter
@@ -435,6 +438,36 @@ setClosingEffect newClosingEffect config =
             Config { c | closingEffect = newClosingEffect }
     in
     mapConfig fn config
+
+
+setBodyWith : Float -> Config msg -> Config msg
+setBodyWith width config =
+    let
+        setWidth : Float -> BodySettings -> BodySettings
+        setWidth newWidth (BodySettings bs) =
+            BodySettings { bs | width = create (Css.px newWidth) }
+    in
+    setBodySettings (setWidth width) config
+
+
+setBodyFromTop : Float -> Config msg -> Config msg
+setBodyFromTop top config =
+    let
+        setTop : Float -> BodySettings -> BodySettings
+        setTop newTop (BodySettings bs) =
+            BodySettings { bs | fromTop = Css.px newTop }
+    in
+    setBodySettings (setTop top) config
+
+
+setBodyBorderRadius : Float -> Config msg -> Config msg
+setBodyBorderRadius borderRad config =
+    let
+        setBorderRadius : Float -> BodySettings -> BodySettings
+        setBorderRadius newBorderRad (BodySettings bs) =
+            BodySettings { bs | borderRadius = Css.px newBorderRad }
+    in
+    setBodySettings (setBorderRadius borderRad) config
 
 
 setBodySettings : (BodySettings -> BodySettings) -> Config msg -> Config msg
@@ -866,46 +899,24 @@ setWindowSize width height config =
     mapConfig fn config
 
 
-setBodyWith : Int -> BodySettings -> BodySettings
-setBodyWith width (BodySettings bs) =
-    let
-        windowWidth =
-            toFloat width
-
-        defaultBodyWidth =
-            bs.width
-                |> rewind
-                |> current
-                |> .numericValue
-
-        setW =
-            if defaultBodyWidth < windowWidth then
-                bs.width |> rewindAll
-
-            else
-                bs.width |> forward (Css.px windowWidth)
-    in
-    BodySettings { bs | width = setW }
-
-
 setModalBodyPosition width height model =
     case model of
         Opening config ->
             config
                 |> setWindowSize width height
-                |> setBodySettings (setBodyCenter width >> setBodyWith width)
+                |> setBodySettings (setBodyCenterAndWidth width)
                 |> Opening
 
         Opened config ->
             config
                 |> setWindowSize width height
-                |> setBodySettings (setBodyCenter width >> setBodyWith width)
+                |> setBodySettings (setBodyCenterAndWidth width)
                 |> Opened
 
         Closing config ->
             config
                 |> setWindowSize width height
-                |> setBodySettings (setBodyCenter width >> setBodyWith width)
+                |> setBodySettings (setBodyCenterAndWidth width)
                 |> Closing
 
         Closed ->
@@ -944,10 +955,10 @@ setModalState modal =
 
 
 {-| @priv
-Centering for modal body
+Centering and adaptive width for modal body
 -}
-setBodyCenter : Int -> BodySettings -> BodySettings
-setBodyCenter width (BodySettings bs) =
+setBodyCenterAndWidth : Int -> BodySettings -> BodySettings
+setBodyCenterAndWidth width (BodySettings bs) =
     let
         defaultBodyWidth =
             bs.width
@@ -964,5 +975,16 @@ setBodyCenter width (BodySettings bs) =
 
             else
                 50 * (1 - defaultBodyWidth / windowWidth)
+
+        setW =
+            if defaultBodyWidth < windowWidth then
+                bs.width |> rewindAll
+
+            else
+                bs.width |> forward (Css.px windowWidth)
     in
-    BodySettings { bs | center = Css.pct setC }
+    BodySettings
+        { bs
+            | center = Css.pct setC
+            , width = setW
+        }
