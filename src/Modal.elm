@@ -323,11 +323,11 @@ modalBodyView animationTagger animation (Config config) =
         , animation
         , animTgr
         ]
-        [ div [ class ("modal__header " ++ config.headerCss) ]
+        [ div [ class config.headerCss ]
             [ config.header ]
-        , div [ class ("modal__content " ++ config.bodyCss) ]
+        , div [ class config.bodyCss ]
             [ config.body ]
-        , div [ class ("modal__footer " ++ config.footerCss) ]
+        , div [ class config.footerCss ]
             [ config.footer ]
         ]
 

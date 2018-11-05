@@ -101,29 +101,34 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "fnds__container" ]
-        [ div [ class "row align-spaced align-top" ]
-            [ div [ class "columns small-12 medium-6 large-6 hide-for-small-only" ]
-                [ img [ src "images/300x300.jpg", class "info-box" ]
+    div
+        [ class "grid-container"
+        , style "margin-top" "50px"
+        ]
+        [ div [ class "grid-x grid-margin-x align-spaced" ]
+            [ div [ class "cell small-12 medium-6 large-6 hide-for-small-only" ]
+                [ img [ src "images/300x300.jpg", class "blue-box" ]
                     []
                 ]
-            , div [ class "columns small-12 medium-6 large-6 info-box" ]
+            , div [ class "cell small-12 medium-6 large-6 blue-box" ]
                 [ h3 [ class "info__header" ] [ text "Modal window" ]
-                , div [] [ text "+ Elm" ]
-                , div [] [ text "+ Foundation" ]
-                , ul [ class "info-text" ]
-                    [ li []
-                        [ text "you can use other css frameworks" ]
-                    , li []
-                        [ text "large selection of open/close settings" ]
-                    , li []
-                        [ text "possibility define own style for modal body" ]
-                    , li []
-                        [ text "see a couple of examples bellow" ]
+                , div [ style "margin-left" "10px" ]
+                    [ div [] [ text "+ Elm" ]
+                    , div [] [ text "+ Foundation" ]
+                    , ul [ class "info__text" ]
+                        [ li []
+                            [ text "you can use other css frameworks" ]
+                        , li []
+                            [ text "large selection of open/close settings" ]
+                        , li []
+                            [ text "possibility define own style for modal body" ]
+                        , li []
+                            [ text "see a couple of examples bellow" ]
+                        ]
                     ]
                 ]
             ]
-        , div [ class "row align-spaced" ]
+        , div [ class "grid-x align-spaced" ]
             [ div []
                 [ button
                     [ class "button btn--width"
@@ -153,7 +158,7 @@ view model =
                     [ text "Modal Info" ]
                 ]
             ]
-        , div [ class "row align-spaced" ]
+        , div [ class "grid-x align-spaced" ]
             [ div []
                 [ button
                     [ class "button btn--width"
@@ -232,11 +237,11 @@ view model =
 configSuccess : Modal.Config Msg
 configSuccess =
     Modal.newConfig ModalMsg
-        |> Modal.setHeaderCss "label success label--border-radius"
+        |> Modal.setHeaderCss "modal__header label success"
         |> Modal.setHeader (h2 [] [ text "Success" ])
-        |> Modal.setBodyCss "body__success--bg-color"
+        |> Modal.setBodyCss "modal__body"
         |> Modal.setBody (bodySuccess Approve)
-        |> Modal.setFooterCss "footer__success--bg-color"
+        |> Modal.setFooterCss "modal__footer"
         |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
@@ -280,9 +285,11 @@ configWarning =
         |> Modal.setOpeningAnimation FromTop
         |> Modal.setOpenedAnimation OpenFromTop
         |> Modal.setClosingAnimation ToTop
-        |> Modal.setHeaderCss "label warning label--border-radius"
+        |> Modal.setHeaderCss "modal__header label warning"
         |> Modal.setHeader (h2 [] [ text "Warning" ])
+        |> Modal.setBodyCss "modal__body"
         |> Modal.setBody bodyWarning
+        |> Modal.setFooterCss "modal__footer"
         |> Modal.setFooter (footerWarning (Modal.closeModal ModalMsg))
 
 
@@ -307,9 +314,11 @@ configAlert =
         |> Modal.setOpeningAnimation FromBottom
         |> Modal.setOpenedAnimation OpenFromBottom
         |> Modal.setClosingAnimation ToBottom
-        |> Modal.setHeaderCss "label alert label--border-radius"
+        |> Modal.setHeaderCss "modal__header label alert"
         |> Modal.setHeader (h2 [] [ text "Alert" ])
+        |> Modal.setBodyCss "modal__body"
         |> Modal.setBody bodyAlert
+        |> Modal.setFooterCss "modal__footer"
         |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
@@ -341,9 +350,11 @@ configInfo =
         |> Modal.setOpeningAnimation FromRight
         |> Modal.setOpenedAnimation OpenFromRight
         |> Modal.setClosingAnimation ToRight
-        |> Modal.setHeaderCss "label primary label--border-radius"
+        |> Modal.setHeaderCss "modal__header label primary"
         |> Modal.setHeader (h2 [] [ text "Info" ])
+        |> Modal.setBodyCss "modal__body"
         |> Modal.setBody bodyInfo
+        |> Modal.setFooterCss "modal__footer"
         |> Modal.setFooter (footerSuccess (Modal.closeModal ModalMsg) (Modal.closeModal ModalMsg))
 
 
