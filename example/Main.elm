@@ -237,6 +237,7 @@ view model =
 configSuccess : Modal.Config Msg
 configSuccess =
     Modal.newConfig ModalMsg
+        |> Modal.setBodyHeight 280
         |> Modal.setHeaderCss "modal__header label success"
         |> Modal.setHeader (h2 [] [ text "Success" ])
         |> Modal.setBodyCss "modal__body"

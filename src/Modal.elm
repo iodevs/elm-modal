@@ -16,7 +16,8 @@ module Modal exposing
     , setBodyBorderRadius
     , setBodyCss
     , setBodyFromTop
-    , setBodyWith
+    , setBodyHeight
+    , setBodyWidth
     , setClosingAnimation
     , setClosingEffect
     , setFooter
@@ -69,7 +70,7 @@ cmdGetWindowSize : Cmd (Msg msg)
 cmdGetWindowSize =
     Task.perform
         (\{ viewport } ->
-            GetWindowSize (round viewport.width) (round viewport.height)
+            GetWindowSize viewport.width viewport.height
         )
         getViewport
 
@@ -80,7 +81,7 @@ cmdGetWindowSize =
 
 subscriptions : Sub (Msg msg)
 subscriptions =
-    onResize GetWindowSize
+    onResize (\x y -> GetWindowSize (toFloat x) (toFloat y))
 
 
 
@@ -91,7 +92,7 @@ type Msg msg
     = OpenModal (Config msg)
     | CloseModal
     | AnimationEnd
-    | GetWindowSize Int Int
+    | GetWindowSize Float Float
 
 
 
@@ -124,16 +125,16 @@ type ClosingEffect
     | WithAnimate
 
 
-type WindowSize
-    = WindowSize { width : Int, height : Int }
-
-
 type BodySettings
     = BodySettings
-        { fromTop : Css.Px
+        { borderRadius : Css.Px
+        , fromTop : Css.Px
         , width : History.History Css.Px
+        , height : Css.Px
+
+        -- Internal settings
+        , bottomClosingTop : Css.Pct
         , center : Css.Pct
-        , borderRadius : Css.Px
         }
 
 
@@ -167,7 +168,6 @@ type Config msg
         , footer : Footer msg
         , modalBodySettings : BodySettings
         , tagger : Msg msg -> msg
-        , windowSize : WindowSize
         }
 
 
@@ -191,14 +191,14 @@ newConfig tagger =
         , footer = text ""
         , modalBodySettings =
             BodySettings
-                { fromTop = Css.px 200
+                { borderRadius = Css.px 5
+                , fromTop = Css.px 200
                 , width = create (Css.px 600)
+                , height = Css.px 185
+                , bottomClosingTop = Css.pct 65
                 , center = Css.pct 33
-                , borderRadius = Css.px 5
                 }
         , tagger = tagger
-        , windowSize =
-            WindowSize { width = 0, height = 0 }
         }
 
 
@@ -318,8 +318,7 @@ modalBodyView animationTagger animation (Config config) =
                     css []
     in
     div
-        [ modalBody
-            config.modalBodySettings
+        [ modalBody config.modalBodySettings
         , animation
         , animTgr
         ]
@@ -440,14 +439,24 @@ setClosingEffect newClosingEffect config =
     mapConfig fn config
 
 
-setBodyWith : Float -> Config msg -> Config msg
-setBodyWith width config =
+setBodyWidth : Float -> Config msg -> Config msg
+setBodyWidth width config =
     let
         setWidth : Float -> BodySettings -> BodySettings
         setWidth newWidth (BodySettings bs) =
             BodySettings { bs | width = create (Css.px newWidth) }
     in
     setBodySettings (setWidth width) config
+
+
+setBodyHeight : Float -> Config msg -> Config msg
+setBodyHeight height config =
+    let
+        setHeight : Float -> BodySettings -> BodySettings
+        setHeight newHeight (BodySettings bs) =
+            BodySettings { bs | height = Css.px newHeight }
+    in
+    setBodySettings (setHeight height) config
 
 
 setBodyFromTop : Float -> Config msg -> Config msg
@@ -563,7 +572,7 @@ modalBody (BodySettings body) =
         , Css.alignItems Css.center
         , Css.property "align-content" "space-between"
         , Css.width (current body.width)
-        , Css.height Css.auto
+        , Css.height body.height
         , Css.borderRadius body.borderRadius
         , Css.boxShadow4 (Css.px 0) (Css.px 3) (Css.px 7) (Css.rgba 0 0 0 0.75)
         , Css.backgroundColor (Css.rgb 255 255 255)
@@ -807,7 +816,7 @@ modalBottomClosing (BodySettings body) =
                 , ( 100
                   , [ Animations.property "opacity" "0"
                     , Animations.property "left" body.center.value
-                    , Animations.property "top" "65%"
+                    , Animations.property "top" body.bottomClosingTop.value
                     ]
                   )
                 ]
@@ -890,33 +899,22 @@ onAnimationEnd msg =
     on "animationend" (Json.succeed msg)
 
 
-setWindowSize : Int -> Int -> Config msg -> Config msg
-setWindowSize width height config =
-    let
-        fn (Config c) =
-            Config { c | windowSize = WindowSize { width = width, height = height } }
-    in
-    mapConfig fn config
-
-
+setModalBodyPosition : Float -> Float -> Model msg -> Model msg
 setModalBodyPosition width height model =
     case model of
         Opening config ->
             config
-                |> setWindowSize width height
-                |> setBodySettings (setBodyCenterAndWidth width)
+                |> setBodySettings (recalcBodyModalProperties width height)
                 |> Opening
 
         Opened config ->
             config
-                |> setWindowSize width height
-                |> setBodySettings (setBodyCenterAndWidth width)
+                |> setBodySettings (recalcBodyModalProperties width height)
                 |> Opened
 
         Closing config ->
             config
-                |> setWindowSize width height
-                |> setBodySettings (setBodyCenterAndWidth width)
+                |> setBodySettings (recalcBodyModalProperties width height)
                 |> Closing
 
         Closed ->
@@ -957,8 +955,8 @@ setModalState modal =
 {-| @priv
 Centering and adaptive width for modal body
 -}
-setBodyCenterAndWidth : Int -> BodySettings -> BodySettings
-setBodyCenterAndWidth width (BodySettings bs) =
+recalcBodyModalProperties : Float -> Float -> BodySettings -> BodySettings
+recalcBodyModalProperties windowWidth windowHeight (BodySettings bs) =
     let
         defaultBodyWidth =
             bs.width
@@ -966,8 +964,8 @@ setBodyCenterAndWidth width (BodySettings bs) =
                 |> current
                 |> .numericValue
 
-        windowWidth =
-            toFloat width
+        setB =
+            100 * (1 - bs.height.numericValue / (0.8 * windowHeight))
 
         setC =
             if defaultBodyWidth >= windowWidth then
@@ -985,6 +983,7 @@ setBodyCenterAndWidth width (BodySettings bs) =
     in
     BodySettings
         { bs
-            | center = Css.pct setC
+            | bottomClosingTop = Css.pct setB
+            , center = Css.pct setC
             , width = setW
         }
