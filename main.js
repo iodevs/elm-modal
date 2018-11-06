@@ -5128,15 +5128,11 @@ var elm$url$Url$fromString = function (str) {
 		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$Dom$getViewport = _Browser_withWindow(_Browser_getViewport);
-var elm$core$Basics$round = _Basics_round;
 var author$project$Modal$cmdGetWindowSize = A2(
 	elm$core$Task$perform,
 	function (_n0) {
 		var viewport = _n0.viewport;
-		return A2(
-			author$project$Modal$GetWindowSize,
-			elm$core$Basics$round(viewport.width),
-			elm$core$Basics$round(viewport.height));
+		return A2(author$project$Modal$GetWindowSize, viewport.width, viewport.height);
 	},
 	elm$browser$Browser$Dom$getViewport);
 var author$project$Modal$Closing = function (a) {
@@ -5156,6 +5152,15 @@ var iodevs$elm_history$History$current = function (_n0) {
 var iodevs$elm_history$History$History = F2(
 	function (a, b) {
 		return {$: 'History', a: a, b: b};
+	});
+var iodevs$elm_history$History$forward = F2(
+	function (value, _n0) {
+		var old = _n0.a;
+		var past = _n0.b;
+		return A2(
+			iodevs$elm_history$History$History,
+			value,
+			A2(elm$core$List$cons, old, past));
 	});
 var iodevs$elm_history$History$rewindAll = function (history) {
 	var past = history.b;
@@ -5196,18 +5201,26 @@ var rtfeldman$elm_css$Css$Internal$lengthConverter = F3(
 		};
 	});
 var rtfeldman$elm_css$Css$pct = A2(rtfeldman$elm_css$Css$Internal$lengthConverter, rtfeldman$elm_css$Css$PercentageUnits, '%');
-var author$project$Modal$setBodyCenter = F2(
-	function (width, _n0) {
+var rtfeldman$elm_css$Css$PxUnits = {$: 'PxUnits'};
+var rtfeldman$elm_css$Css$px = A2(rtfeldman$elm_css$Css$Internal$lengthConverter, rtfeldman$elm_css$Css$PxUnits, 'px');
+var author$project$Modal$recalcBodyModalProperties = F3(
+	function (windowWidth, windowHeight, _n0) {
 		var bs = _n0.a;
-		var windowWidth = width;
+		var setB = 100 * (1 - (bs.height.numericValue / (0.8 * windowHeight)));
 		var defaultBodyWidth = iodevs$elm_history$History$current(
 			iodevs$elm_history$History$rewindAll(bs.width)).numericValue;
 		var setC = (_Utils_cmp(defaultBodyWidth, windowWidth) > -1) ? 0 : (50 * (1 - (defaultBodyWidth / windowWidth)));
+		var setW = (_Utils_cmp(defaultBodyWidth, windowWidth) < 0) ? iodevs$elm_history$History$rewindAll(bs.width) : A2(
+			iodevs$elm_history$History$forward,
+			rtfeldman$elm_css$Css$px(windowWidth),
+			bs.width);
 		return author$project$Modal$BodySettings(
 			_Utils_update(
 				bs,
 				{
-					center: rtfeldman$elm_css$Css$pct(setC)
+					bottomClosingTop: rtfeldman$elm_css$Css$pct(setB),
+					center: rtfeldman$elm_css$Css$pct(setC),
+					width: setW
 				}));
 	});
 var author$project$Modal$Config = function (a) {
@@ -5223,68 +5236,6 @@ var author$project$Modal$setBodySettings = F2(
 					modalBodySettings: updateFn(c.modalBodySettings)
 				}));
 	});
-var iodevs$elm_history$History$forward = F2(
-	function (value, _n0) {
-		var old = _n0.a;
-		var past = _n0.b;
-		return A2(
-			iodevs$elm_history$History$History,
-			value,
-			A2(elm$core$List$cons, old, past));
-	});
-var iodevs$elm_history$History$rewind = function (history) {
-	var past = history.b;
-	if (past.b) {
-		var old = past.a;
-		var remains = past.b;
-		return A2(iodevs$elm_history$History$History, old, remains);
-	} else {
-		return history;
-	}
-};
-var rtfeldman$elm_css$Css$PxUnits = {$: 'PxUnits'};
-var rtfeldman$elm_css$Css$px = A2(rtfeldman$elm_css$Css$Internal$lengthConverter, rtfeldman$elm_css$Css$PxUnits, 'px');
-var author$project$Modal$setBodyWith = F2(
-	function (width, _n0) {
-		var bs = _n0.a;
-		var windowWidth = width;
-		var defaultBodyWidth = iodevs$elm_history$History$current(
-			iodevs$elm_history$History$rewind(bs.width)).numericValue;
-		var setW = (_Utils_cmp(defaultBodyWidth, windowWidth) < 0) ? iodevs$elm_history$History$rewindAll(bs.width) : A2(
-			iodevs$elm_history$History$forward,
-			rtfeldman$elm_css$Css$px(windowWidth),
-			bs.width);
-		return author$project$Modal$BodySettings(
-			_Utils_update(
-				bs,
-				{width: setW}));
-	});
-var author$project$Modal$WindowSize = function (a) {
-	return {$: 'WindowSize', a: a};
-};
-var author$project$Modal$mapConfig = F2(
-	function (fn, config) {
-		return fn(config);
-	});
-var author$project$Modal$setWindowSize = F3(
-	function (width, height, config) {
-		var fn = function (_n0) {
-			var c = _n0.a;
-			return author$project$Modal$Config(
-				_Utils_update(
-					c,
-					{
-						windowSize: author$project$Modal$WindowSize(
-							{height: height, width: width})
-					}));
-		};
-		return A2(author$project$Modal$mapConfig, fn, config);
-	});
-var elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
 var author$project$Modal$setModalBodyPosition = F3(
 	function (width, height, model) {
 		switch (model.$) {
@@ -5293,31 +5244,22 @@ var author$project$Modal$setModalBodyPosition = F3(
 				return author$project$Modal$Opening(
 					A2(
 						author$project$Modal$setBodySettings,
-						A2(
-							elm$core$Basics$composeR,
-							author$project$Modal$setBodyCenter(width),
-							author$project$Modal$setBodyWith(width)),
-						A3(author$project$Modal$setWindowSize, width, height, config)));
+						A2(author$project$Modal$recalcBodyModalProperties, width, height),
+						config));
 			case 'Opened':
 				var config = model.a;
 				return author$project$Modal$Opened(
 					A2(
 						author$project$Modal$setBodySettings,
-						A2(
-							elm$core$Basics$composeR,
-							author$project$Modal$setBodyCenter(width),
-							author$project$Modal$setBodyWith(width)),
-						A3(author$project$Modal$setWindowSize, width, height, config)));
+						A2(author$project$Modal$recalcBodyModalProperties, width, height),
+						config));
 			case 'Closing':
 				var config = model.a;
 				return author$project$Modal$Closing(
 					A2(
 						author$project$Modal$setBodySettings,
-						A2(
-							elm$core$Basics$composeR,
-							author$project$Modal$setBodyCenter(width),
-							author$project$Modal$setBodyWith(width)),
-						A3(author$project$Modal$setWindowSize, width, height, config)));
+						A2(author$project$Modal$recalcBodyModalProperties, width, height),
+						config));
 			default:
 				return author$project$Modal$Closed;
 		}
@@ -5489,18 +5431,22 @@ var author$project$Modal$newConfig = function (tagger) {
 			modalBodySettings: author$project$Modal$BodySettings(
 				{
 					borderRadius: rtfeldman$elm_css$Css$px(5),
+					bottomClosingTop: rtfeldman$elm_css$Css$pct(65),
 					center: rtfeldman$elm_css$Css$pct(33),
 					fromTop: rtfeldman$elm_css$Css$px(200),
+					height: rtfeldman$elm_css$Css$px(185),
 					width: iodevs$elm_history$History$create(
 						rtfeldman$elm_css$Css$px(600))
 				}),
 			openedAnimation: author$project$Modal$OpenFromTop,
 			openingAnimation: author$project$Modal$FromTop,
-			tagger: tagger,
-			windowSize: author$project$Modal$WindowSize(
-				{height: 0, width: 0})
+			tagger: tagger
 		});
 };
+var author$project$Modal$mapConfig = F2(
+	function (fn, config) {
+		return fn(config);
+	});
 var rtfeldman$elm_css$VirtualDom$Styled$unstyledNode = rtfeldman$elm_css$VirtualDom$Styled$Unstyled;
 var rtfeldman$elm_css$Html$Styled$fromUnstyled = rtfeldman$elm_css$VirtualDom$Styled$unstyledNode;
 var author$project$Modal$setBody = F2(
@@ -5513,6 +5459,17 @@ var author$project$Modal$setBody = F2(
 					{
 						body: rtfeldman$elm_css$Html$Styled$fromUnstyled(newBody)
 					}));
+		};
+		return A2(author$project$Modal$mapConfig, fn, config);
+	});
+var author$project$Modal$setBodyCss = F2(
+	function (newBodyCss, config) {
+		var fn = function (_n0) {
+			var c = _n0.a;
+			return author$project$Modal$Config(
+				_Utils_update(
+					c,
+					{bodyCss: newBodyCss}));
 		};
 		return A2(author$project$Modal$mapConfig, fn, config);
 	});
@@ -5537,6 +5494,17 @@ var author$project$Modal$setFooter = F2(
 					{
 						footer: rtfeldman$elm_css$Html$Styled$fromUnstyled(newFooter)
 					}));
+		};
+		return A2(author$project$Modal$mapConfig, fn, config);
+	});
+var author$project$Modal$setFooterCss = F2(
+	function (newFooterCss, config) {
+		var fn = function (_n0) {
+			var c = _n0.a;
+			return author$project$Modal$Config(
+				_Utils_update(
+					c,
+					{footerCss: newFooterCss}));
 		};
 		return A2(author$project$Modal$mapConfig, fn, config);
 	});
@@ -5594,30 +5562,36 @@ var author$project$Main$configAlert = A2(
 		author$project$Modal$closeModal(author$project$Main$ModalMsg),
 		author$project$Modal$closeModal(author$project$Main$ModalMsg)),
 	A2(
-		author$project$Modal$setBody,
-		author$project$Main$bodyAlert,
+		author$project$Modal$setFooterCss,
+		'modal__footer',
 		A2(
-			author$project$Modal$setHeader,
+			author$project$Modal$setBody,
+			author$project$Main$bodyAlert,
 			A2(
-				elm$html$Html$h2,
-				_List_Nil,
-				_List_fromArray(
-					[
-						elm$html$Html$text('Alert')
-					])),
-			A2(
-				author$project$Modal$setHeaderCss,
-				'label alert label--border-radius',
+				author$project$Modal$setBodyCss,
+				'modal__body',
 				A2(
-					author$project$Modal$setClosingAnimation,
-					author$project$Modal$ToBottom,
+					author$project$Modal$setHeader,
 					A2(
-						author$project$Modal$setOpenedAnimation,
-						author$project$Modal$OpenFromBottom,
+						elm$html$Html$h2,
+						_List_Nil,
+						_List_fromArray(
+							[
+								elm$html$Html$text('Alert')
+							])),
+					A2(
+						author$project$Modal$setHeaderCss,
+						'modal__header label alert',
 						A2(
-							author$project$Modal$setOpeningAnimation,
-							author$project$Modal$FromBottom,
-							author$project$Modal$newConfig(author$project$Main$ModalMsg))))))));
+							author$project$Modal$setClosingAnimation,
+							author$project$Modal$ToBottom,
+							A2(
+								author$project$Modal$setOpenedAnimation,
+								author$project$Modal$OpenFromBottom,
+								A2(
+									author$project$Modal$setOpeningAnimation,
+									author$project$Modal$FromBottom,
+									author$project$Modal$newConfig(author$project$Main$ModalMsg))))))))));
 var author$project$Main$bodyInfo = A2(
 	elm$html$Html$div,
 	_List_Nil,
@@ -5635,30 +5609,36 @@ var author$project$Main$configInfo = A2(
 		author$project$Modal$closeModal(author$project$Main$ModalMsg),
 		author$project$Modal$closeModal(author$project$Main$ModalMsg)),
 	A2(
-		author$project$Modal$setBody,
-		author$project$Main$bodyInfo,
+		author$project$Modal$setFooterCss,
+		'modal__footer',
 		A2(
-			author$project$Modal$setHeader,
+			author$project$Modal$setBody,
+			author$project$Main$bodyInfo,
 			A2(
-				elm$html$Html$h2,
-				_List_Nil,
-				_List_fromArray(
-					[
-						elm$html$Html$text('Info')
-					])),
-			A2(
-				author$project$Modal$setHeaderCss,
-				'label primary label--border-radius',
+				author$project$Modal$setBodyCss,
+				'modal__body',
 				A2(
-					author$project$Modal$setClosingAnimation,
-					author$project$Modal$ToRight,
+					author$project$Modal$setHeader,
 					A2(
-						author$project$Modal$setOpenedAnimation,
-						author$project$Modal$OpenFromRight,
+						elm$html$Html$h2,
+						_List_Nil,
+						_List_fromArray(
+							[
+								elm$html$Html$text('Info')
+							])),
+					A2(
+						author$project$Modal$setHeaderCss,
+						'modal__header label primary',
 						A2(
-							author$project$Modal$setOpeningAnimation,
-							author$project$Modal$FromRight,
-							author$project$Modal$newConfig(author$project$Main$ModalMsg))))))));
+							author$project$Modal$setClosingAnimation,
+							author$project$Modal$ToRight,
+							A2(
+								author$project$Modal$setOpenedAnimation,
+								author$project$Modal$OpenFromRight,
+								A2(
+									author$project$Modal$setOpeningAnimation,
+									author$project$Modal$FromRight,
+									author$project$Modal$newConfig(author$project$Main$ModalMsg))))))))));
 var author$project$Main$Approve = {$: 'Approve'};
 var elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
@@ -5701,27 +5681,22 @@ var author$project$Main$bodySuccess = function (approveMsg) {
 					]))
 			]));
 };
-var author$project$Modal$setBodyCss = F2(
-	function (newBodyCss, config) {
-		var fn = function (_n0) {
-			var c = _n0.a;
-			return author$project$Modal$Config(
-				_Utils_update(
-					c,
-					{bodyCss: newBodyCss}));
-		};
-		return A2(author$project$Modal$mapConfig, fn, config);
-	});
-var author$project$Modal$setFooterCss = F2(
-	function (newFooterCss, config) {
-		var fn = function (_n0) {
-			var c = _n0.a;
-			return author$project$Modal$Config(
-				_Utils_update(
-					c,
-					{footerCss: newFooterCss}));
-		};
-		return A2(author$project$Modal$mapConfig, fn, config);
+var author$project$Modal$setBodyHeight = F2(
+	function (height, config) {
+		var setHeight = F2(
+			function (newHeight, _n0) {
+				var bs = _n0.a;
+				return author$project$Modal$BodySettings(
+					_Utils_update(
+						bs,
+						{
+							height: rtfeldman$elm_css$Css$px(newHeight)
+						}));
+			});
+		return A2(
+			author$project$Modal$setBodySettings,
+			setHeight(height),
+			config);
 	});
 var author$project$Main$configSuccess = A2(
 	author$project$Modal$setFooter,
@@ -5731,13 +5706,13 @@ var author$project$Main$configSuccess = A2(
 		author$project$Modal$closeModal(author$project$Main$ModalMsg)),
 	A2(
 		author$project$Modal$setFooterCss,
-		'footer__success--bg-color',
+		'modal__footer',
 		A2(
 			author$project$Modal$setBody,
 			author$project$Main$bodySuccess(author$project$Main$Approve),
 			A2(
 				author$project$Modal$setBodyCss,
-				'body__success--bg-color',
+				'modal__body',
 				A2(
 					author$project$Modal$setHeader,
 					A2(
@@ -5749,8 +5724,11 @@ var author$project$Main$configSuccess = A2(
 							])),
 					A2(
 						author$project$Modal$setHeaderCss,
-						'label success label--border-radius',
-						author$project$Modal$newConfig(author$project$Main$ModalMsg)))))));
+						'modal__header label success',
+						A2(
+							author$project$Modal$setBodyHeight,
+							280,
+							author$project$Modal$newConfig(author$project$Main$ModalMsg))))))));
 var author$project$Main$bodyWarning = A2(
 	elm$html$Html$div,
 	_List_Nil,
@@ -5788,33 +5766,39 @@ var author$project$Main$configWarning = A2(
 	author$project$Main$footerWarning(
 		author$project$Modal$closeModal(author$project$Main$ModalMsg)),
 	A2(
-		author$project$Modal$setBody,
-		author$project$Main$bodyWarning,
+		author$project$Modal$setFooterCss,
+		'modal__footer',
 		A2(
-			author$project$Modal$setHeader,
+			author$project$Modal$setBody,
+			author$project$Main$bodyWarning,
 			A2(
-				elm$html$Html$h2,
-				_List_Nil,
-				_List_fromArray(
-					[
-						elm$html$Html$text('Warning')
-					])),
-			A2(
-				author$project$Modal$setHeaderCss,
-				'label warning label--border-radius',
+				author$project$Modal$setBodyCss,
+				'modal__body',
 				A2(
-					author$project$Modal$setClosingAnimation,
-					author$project$Modal$ToTop,
+					author$project$Modal$setHeader,
 					A2(
-						author$project$Modal$setOpenedAnimation,
-						author$project$Modal$OpenFromTop,
+						elm$html$Html$h2,
+						_List_Nil,
+						_List_fromArray(
+							[
+								elm$html$Html$text('Warning')
+							])),
+					A2(
+						author$project$Modal$setHeaderCss,
+						'modal__header label warning',
 						A2(
-							author$project$Modal$setOpeningAnimation,
-							author$project$Modal$FromTop,
+							author$project$Modal$setClosingAnimation,
+							author$project$Modal$ToTop,
 							A2(
-								author$project$Modal$setClosingEffect,
-								author$project$Modal$WithoutAnimate,
-								author$project$Modal$newConfig(author$project$Main$ModalMsg)))))))));
+								author$project$Modal$setOpenedAnimation,
+								author$project$Modal$OpenFromTop,
+								A2(
+									author$project$Modal$setOpeningAnimation,
+									author$project$Modal$FromTop,
+									A2(
+										author$project$Modal$setClosingEffect,
+										author$project$Modal$WithoutAnimate,
+										author$project$Modal$newConfig(author$project$Main$ModalMsg)))))))))));
 var author$project$Modal$FromLeft = {$: 'FromLeft'};
 var author$project$Modal$ToLeft = {$: 'ToLeft'};
 var author$project$Modal$OpenModal = function (a) {
@@ -7799,7 +7783,7 @@ var author$project$Modal$modalBottomClosing = function (_n0) {
 								[
 									A2(rtfeldman$elm_css$Css$Animations$property, 'opacity', '0'),
 									A2(rtfeldman$elm_css$Css$Animations$property, 'left', body.center.value),
-									A2(rtfeldman$elm_css$Css$Animations$property, 'top', '65%')
+									A2(rtfeldman$elm_css$Css$Animations$property, 'top', body.bottomClosingTop.value)
 								]))
 						]))),
 				A2(rtfeldman$elm_css$Css$property, 'animation-duration', '0.5s'),
@@ -8015,7 +7999,6 @@ var rtfeldman$elm_css$Css$alignItems = function (fn) {
 		'align-items',
 		fn(rtfeldman$elm_css$Css$Internal$lengthForOverloadedProperty));
 };
-var rtfeldman$elm_css$Css$auto = {alignItemsOrAuto: rtfeldman$elm_css$Css$Structure$Compatible, cursor: rtfeldman$elm_css$Css$Structure$Compatible, flexBasis: rtfeldman$elm_css$Css$Structure$Compatible, intOrAuto: rtfeldman$elm_css$Css$Structure$Compatible, justifyContentOrAuto: rtfeldman$elm_css$Css$Structure$Compatible, lengthOrAuto: rtfeldman$elm_css$Css$Structure$Compatible, lengthOrAutoOrCoverOrContain: rtfeldman$elm_css$Css$Structure$Compatible, lengthOrNumberOrAutoOrNoneOrContent: rtfeldman$elm_css$Css$Structure$Compatible, overflow: rtfeldman$elm_css$Css$Structure$Compatible, pointerEvents: rtfeldman$elm_css$Css$Structure$Compatible, tableLayout: rtfeldman$elm_css$Css$Structure$Compatible, textRendering: rtfeldman$elm_css$Css$Structure$Compatible, touchAction: rtfeldman$elm_css$Css$Structure$Compatible, value: 'auto'};
 var rtfeldman$elm_css$Css$backgroundColor = function (c) {
 	return A2(rtfeldman$elm_css$Css$property, 'background-color', c.value);
 };
@@ -8097,7 +8080,7 @@ var author$project$Modal$modalBody = function (_n0) {
 				A2(rtfeldman$elm_css$Css$property, 'align-content', 'space-between'),
 				rtfeldman$elm_css$Css$width(
 				iodevs$elm_history$History$current(body.width)),
-				rtfeldman$elm_css$Css$height(rtfeldman$elm_css$Css$auto),
+				rtfeldman$elm_css$Css$height(body.height),
 				rtfeldman$elm_css$Css$borderRadius(body.borderRadius),
 				A4(
 				rtfeldman$elm_css$Css$boxShadow4,
@@ -8179,7 +8162,7 @@ var author$project$Modal$modalBodyView = F3(
 					rtfeldman$elm_css$Html$Styled$div,
 					_List_fromArray(
 						[
-							rtfeldman$elm_css$Html$Styled$Attributes$class('modal__header ' + config.headerCss)
+							rtfeldman$elm_css$Html$Styled$Attributes$class(config.headerCss)
 						]),
 					_List_fromArray(
 						[config.header])),
@@ -8187,7 +8170,7 @@ var author$project$Modal$modalBodyView = F3(
 					rtfeldman$elm_css$Html$Styled$div,
 					_List_fromArray(
 						[
-							rtfeldman$elm_css$Html$Styled$Attributes$class('modal__content ' + config.bodyCss)
+							rtfeldman$elm_css$Html$Styled$Attributes$class(config.bodyCss)
 						]),
 					_List_fromArray(
 						[config.body])),
@@ -8195,7 +8178,7 @@ var author$project$Modal$modalBodyView = F3(
 					rtfeldman$elm_css$Html$Styled$div,
 					_List_fromArray(
 						[
-							rtfeldman$elm_css$Html$Styled$Attributes$class('modal__footer ' + config.footerCss)
+							rtfeldman$elm_css$Html$Styled$Attributes$class(config.footerCss)
 						]),
 					_List_fromArray(
 						[config.footer]))
@@ -8994,7 +8977,8 @@ var author$project$Main$view = function (model) {
 		elm$html$Html$div,
 		_List_fromArray(
 			[
-				elm$html$Html$Attributes$class('fnds__container')
+				elm$html$Html$Attributes$class('grid-container'),
+				A2(elm$html$Html$Attributes$style, 'margin-top', '50px')
 			]),
 		_List_fromArray(
 			[
@@ -9002,7 +8986,7 @@ var author$project$Main$view = function (model) {
 				elm$html$Html$div,
 				_List_fromArray(
 					[
-						elm$html$Html$Attributes$class('row align-spaced align-top')
+						elm$html$Html$Attributes$class('grid-x grid-margin-x align-spaced')
 					]),
 				_List_fromArray(
 					[
@@ -9010,7 +8994,7 @@ var author$project$Main$view = function (model) {
 						elm$html$Html$div,
 						_List_fromArray(
 							[
-								elm$html$Html$Attributes$class('columns small-12 medium-6 large-6 hide-for-small-only')
+								elm$html$Html$Attributes$class('cell small-12 medium-6 large-6 hide-for-small-only')
 							]),
 						_List_fromArray(
 							[
@@ -9019,7 +9003,7 @@ var author$project$Main$view = function (model) {
 								_List_fromArray(
 									[
 										elm$html$Html$Attributes$src('images/300x300.jpg'),
-										elm$html$Html$Attributes$class('info-box')
+										elm$html$Html$Attributes$class('blue-box')
 									]),
 								_List_Nil)
 							])),
@@ -9027,7 +9011,7 @@ var author$project$Main$view = function (model) {
 						elm$html$Html$div,
 						_List_fromArray(
 							[
-								elm$html$Html$Attributes$class('columns small-12 medium-6 large-6 info-box')
+								elm$html$Html$Attributes$class('cell small-12 medium-6 large-6 blue-box')
 							]),
 						_List_fromArray(
 							[
@@ -9043,53 +9027,62 @@ var author$project$Main$view = function (model) {
 									])),
 								A2(
 								elm$html$Html$div,
-								_List_Nil,
 								_List_fromArray(
 									[
-										elm$html$Html$text('+ Elm')
-									])),
-								A2(
-								elm$html$Html$div,
-								_List_Nil,
-								_List_fromArray(
-									[
-										elm$html$Html$text('+ Foundation')
-									])),
-								A2(
-								elm$html$Html$ul,
-								_List_fromArray(
-									[
-										elm$html$Html$Attributes$class('info-text')
+										A2(elm$html$Html$Attributes$style, 'margin-left', '10px')
 									]),
 								_List_fromArray(
 									[
 										A2(
-										elm$html$Html$li,
+										elm$html$Html$div,
 										_List_Nil,
 										_List_fromArray(
 											[
-												elm$html$Html$text('you can use other css frameworks')
+												elm$html$Html$text('+ Elm')
 											])),
 										A2(
-										elm$html$Html$li,
+										elm$html$Html$div,
 										_List_Nil,
 										_List_fromArray(
 											[
-												elm$html$Html$text('large selection of open/close settings')
+												elm$html$Html$text('+ Foundation')
 											])),
 										A2(
-										elm$html$Html$li,
-										_List_Nil,
+										elm$html$Html$ul,
 										_List_fromArray(
 											[
-												elm$html$Html$text('possibility define own style for modal body')
-											])),
-										A2(
-										elm$html$Html$li,
-										_List_Nil,
+												elm$html$Html$Attributes$class('info__text')
+											]),
 										_List_fromArray(
 											[
-												elm$html$Html$text('see a couple of examples bellow')
+												A2(
+												elm$html$Html$li,
+												_List_Nil,
+												_List_fromArray(
+													[
+														elm$html$Html$text('you can use other css frameworks')
+													])),
+												A2(
+												elm$html$Html$li,
+												_List_Nil,
+												_List_fromArray(
+													[
+														elm$html$Html$text('large selection of open/close settings')
+													])),
+												A2(
+												elm$html$Html$li,
+												_List_Nil,
+												_List_fromArray(
+													[
+														elm$html$Html$text('possibility define own style for modal body')
+													])),
+												A2(
+												elm$html$Html$li,
+												_List_Nil,
+												_List_fromArray(
+													[
+														elm$html$Html$text('see a couple of examples bellow')
+													]))
 											]))
 									]))
 							]))
@@ -9098,7 +9091,7 @@ var author$project$Main$view = function (model) {
 				elm$html$Html$div,
 				_List_fromArray(
 					[
-						elm$html$Html$Attributes$class('row align-spaced')
+						elm$html$Html$Attributes$class('grid-x align-spaced')
 					]),
 				_List_fromArray(
 					[
@@ -9179,7 +9172,7 @@ var author$project$Main$view = function (model) {
 				elm$html$Html$div,
 				_List_fromArray(
 					[
-						elm$html$Html$Attributes$class('row align-spaced')
+						elm$html$Html$Attributes$class('grid-x align-spaced')
 					]),
 				_List_fromArray(
 					[
@@ -9640,7 +9633,11 @@ var elm$browser$Browser$Events$onResize = function (func) {
 				A2(elm$json$Json$Decode$field, 'innerWidth', elm$json$Json$Decode$int),
 				A2(elm$json$Json$Decode$field, 'innerHeight', elm$json$Json$Decode$int))));
 };
-var author$project$Modal$subscriptions = elm$browser$Browser$Events$onResize(author$project$Modal$GetWindowSize);
+var author$project$Modal$subscriptions = elm$browser$Browser$Events$onResize(
+	F2(
+		function (x, y) {
+			return A2(author$project$Modal$GetWindowSize, x, y);
+		}));
 var elm$browser$Browser$element = _Browser_element;
 var elm$core$Basics$always = F2(
 	function (a, _n0) {
