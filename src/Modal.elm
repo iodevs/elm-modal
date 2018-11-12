@@ -572,7 +572,7 @@ modalBody (BodySettings body) =
         , Css.alignItems Css.center
         , Css.property "align-content" "space-between"
         , Css.width (current body.width)
-        , Css.height body.height
+        , Css.minHeight body.height
         , Css.borderRadius body.borderRadius
         , Css.boxShadow4 (Css.px 0) (Css.px 3) (Css.px 7) (Css.rgba 0 0 0 0.75)
         , Css.backgroundColor (Css.rgb 255 255 255)
