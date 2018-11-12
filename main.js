@@ -8022,7 +8022,7 @@ var rtfeldman$elm_css$Css$column = _Utils_update(
 	{value: 'column'});
 var rtfeldman$elm_css$Css$displayFlex = A2(rtfeldman$elm_css$Css$property, 'display', 'flex');
 var rtfeldman$elm_css$Css$flexDirection = rtfeldman$elm_css$Css$prop1('flex-direction');
-var rtfeldman$elm_css$Css$height = rtfeldman$elm_css$Css$prop1('height');
+var rtfeldman$elm_css$Css$minHeight = rtfeldman$elm_css$Css$prop1('min-height');
 var rtfeldman$elm_css$Css$cssFunction = F2(
 	function (funcName, args) {
 		return funcName + ('(' + (A2(elm$core$String$join, ', ', args) + ')'));
@@ -8080,7 +8080,7 @@ var author$project$Modal$modalBody = function (_n0) {
 				A2(rtfeldman$elm_css$Css$property, 'align-content', 'space-between'),
 				rtfeldman$elm_css$Css$width(
 				iodevs$elm_history$History$current(body.width)),
-				rtfeldman$elm_css$Css$height(body.height),
+				rtfeldman$elm_css$Css$minHeight(body.height),
 				rtfeldman$elm_css$Css$borderRadius(body.borderRadius),
 				A4(
 				rtfeldman$elm_css$Css$boxShadow4,
